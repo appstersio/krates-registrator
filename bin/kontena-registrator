@@ -1,0 +1,5 @@
+#!/usr/bin/env ruby
+
+require 'kontena/registrator/main'
+
+Kontena::Registrator::Main.run
