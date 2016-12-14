@@ -1,7 +1,9 @@
 require 'celluloid'
 require 'docker'
+require 'docker/version_patch'
 require 'kontena/logging'
 require 'kontena/observable'
+require 'pp'
 
 module Kontena::Registrator::Docker
   class State
@@ -19,6 +21,28 @@ module Kontena::Registrator::Docker
       def name
         @json['Name'].split('/').last
       end
+
+      def hostname
+        @json['Config']['Hostname']
+      end
+
+      def networks
+        @json['NetworkSettings']['Networks']
+      end
+
+      # Evaluate some expression in the context of this daemon
+      def eval(expr, context)
+        case expr
+        when String
+          return expr
+        when Proc
+          return expr.call(self, **context)
+        when Array
+          return expr.map{|subexpr| self.eval(subexpr, context)}
+        when Hash
+          return Hash[expr.map{|key, value| [key, self.eval(value, context)]}]
+        end
+      end
     end
 
     def initialize(containers = { })
@@ -35,6 +59,8 @@ module Kontena::Registrator::Docker
     # @param [Hash, Nil] json
     def container!(id, json)
       if json
+        pp(json)
+
         @containers[id] = Container.new(id, json)
       else
         @containers.delete(id)
