@@ -23,7 +23,7 @@ module Kontena::Registrator
           proc { |container| container.hostname },
         ],
         value: {
-          host: proc { |container, kontena_ip: | kontena_ip },
+          host: proc { |kontena_ip: | kontena_ip },
         }
       }
     }
@@ -37,10 +37,6 @@ module Kontena::Registrator
 
     def eval_container(container)
       context = { }
-
-      unless networks = container.networks
-        logger.error "container does not nave networks: #{container.inspect}"
-      end
 
       if where = @config[:where]
         where.each do |expr|
