@@ -9,6 +9,8 @@ source 'https://rubygems.org' do
   group :test do
     gem 'rspec', '~> 3.5'
   end
+
+  gem 'kontena-etcd', :path => 'vendor/kontena/kontena-etcd'
 end
 
 gemspec

@@ -3,6 +3,12 @@ PATH
   specs:
     kontena-registrator (0.0.1)
 
+PATH
+  remote: vendor/kontena/kontena-etcd
+  specs:
+    kontena-etcd (0.1.0)
+      etcd (~> 0.3.0)
+
 GEM
   remote: https://rubygems.org/
   specs:
@@ -27,9 +33,12 @@ GEM
     docker-api (1.33.0)
       excon (>= 0.38.0)
       json
+    etcd (0.3.0)
+      mixlib-log
     excon (0.54.0)
     hitimes (1.2.4)
     json (2.0.2)
+    mixlib-log (1.7.1)
     rspec (3.5.0)
       rspec-core (~> 3.5.0)
       rspec-expectations (~> 3.5.0)
@@ -52,6 +61,7 @@ PLATFORMS
 DEPENDENCIES
   celluloid (~> 0.17.3)!
   docker-api (~> 1.33.0)!
+  kontena-etcd!
   kontena-registrator!
   rspec (~> 3.5)!
 
