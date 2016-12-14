@@ -18,6 +18,10 @@ module Kontena::Registrator::Docker
         self.freeze
       end
 
+      def to_s
+        name
+      end
+
       def name
         @json['Name'].split('/').last
       end

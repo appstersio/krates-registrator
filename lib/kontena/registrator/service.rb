@@ -9,6 +9,9 @@ module Kontena::Registrator
 
     # SkyDNS example
     SKYDNS = {
+      context: {
+        domain: 'kontena.local',
+      },
       where: [
         proc { |container| container.networks.has_key? 'kontena' },
         proc { |container| !container.networks['kontena']['IPAddress'].empty? },
@@ -19,11 +22,11 @@ module Kontena::Registrator
       etcd: {
         path: [
           '/skydns',
-          'kontena.local'.split('.').reverse,
+          proc { |container, domain:, **context | domain.split('.').reverse },
           proc { |container| container.hostname },
         ],
         value: {
-          host: proc { |kontena_ip: | kontena_ip },
+          host: proc { |container, kontena_ip:, **context | kontena_ip },
         }
       }
     }
@@ -36,30 +39,30 @@ module Kontena::Registrator
     end
 
     def eval_container(container)
-      context = { }
+      context = @config.fetch(:context, {})
 
-      if where = @config[:where]
-        where.each do |expr|
-          if value = container.eval(expr, context)
-            logger.debug "where=#{expr} match value=#{value}"
-          else
-            logger.debug "where=#{expr} skip value=#{value}"
-            return
-          end
+      @config.fetch(:where, []).each do |expr|
+        if value = container.eval(expr, context)
+          logger.debug "container=#{container} where=#{expr} match value=#{value}"
+        else
+          logger.debug "container=#{container} where=#{expr} skip value=#{value}"
+          return
         end
       end
 
-      if select = @config[:select]
-        select.each_pair do |sym, expr|
-          context[sym] = container.eval(expr, context)
-        end
+      @config.fetch(:select, {}).each_pair do |sym, expr|
+        context[sym] = container.eval(expr, context)
+      end
+
+      context.each do |key, value|
+        logger.debug "container=#{container} context=#{key} value=#{value.inspect}"
       end
 
       if etcd_config = @config[:etcd]
         path = [container.eval(etcd_config[:path], context)].flatten.join '/'
         value = container.eval(etcd_config[:value], context).to_json
 
-        logger.debug "eval container: path=#{path} value=#{value.inspect}"
+        logger.debug "container=#{container} etcd=#{path} value=#{value.inspect}"
 
         yield path, value if path && value
       end
