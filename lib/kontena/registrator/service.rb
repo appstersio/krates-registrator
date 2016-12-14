@@ -20,14 +20,11 @@ module Kontena::Registrator
       select: {
         kontena_ip: proc { @container.networks['kontena']['IPAddress'] }
       },
-      etcd: {
-        path: [
-          '/skydns',
-          proc { @domain.split('.').reverse },
-          proc { @container.hostname },
-        ],
-        value: {
-          host: proc { @kontena_ip },
+      etcd: proc {
+        {
+          "/skydns/#{@domain.split('.').reverse.join('/')}/#{@container.hostname}" => {
+            host: @kontena_ip,
+          }.to_json,
         }
       }
     }
@@ -57,10 +54,7 @@ module Kontena::Registrator
 
       logger.debug "container=#{container}: #{context}"
 
-      if etcd_config = @config[:etcd]
-        path = [context.eval(etcd_config[:path])].flatten.join '/'
-        value = context.eval(etcd_config[:value]).to_json
-
+      context.eval(@config.fetch(:etcd, {})).each do |path, value|
         logger.debug "container=#{container} etcd=#{path} value=#{value.inspect}"
 
         yield path, value if path && value

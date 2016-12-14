@@ -10,14 +10,14 @@ module Kontena::Registrator::Eval
     def eval(expr)
       case expr
       when String
-        # TODO: interpolate?
-        return expr
+        # XXX: late interpolate?
+        return expr # self.instance_eval('%Q[' + expr + ']')
       when Proc
         return self.instance_eval(&expr)
       when Array
         return expr.map{|subexpr| self.eval(subexpr)}
       when Hash
-        return Hash[expr.map{|key, value| [key, self.eval(value)]}]
+        return Hash[expr.map{|key, value| [self.eval(key), self.eval(value)]}]
       else
         return expr
       end
