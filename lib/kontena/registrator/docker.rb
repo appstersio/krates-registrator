@@ -49,7 +49,7 @@ module Kontena::Registrator::Docker
     # @param [Hash, Nil] json
     def container!(id, json)
       if json
-        pp(json)
+        #pp(json)
 
         @containers[id] = Container.new(id, json)
       else

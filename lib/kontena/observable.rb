@@ -20,6 +20,8 @@ module Kontena
     end
 
     # Yield state, once at start and after each update
+    #
+    # XXX: yield again if updated during yield evaluation...
     def observe
       logger.debug "observe..."
 
