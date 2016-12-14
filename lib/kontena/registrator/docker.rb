@@ -1,6 +1,7 @@
 require 'celluloid'
 require 'docker'
 require 'kontena/logging'
+require 'kontena/observable'
 
 module Kontena::Registrator::Docker
   class State
@@ -53,24 +54,32 @@ module Kontena::Registrator::Docker
     include Kontena::Logging
     include Celluloid
 
-    def initialize
-      logger.debug "Initialize"
+    @observable = Kontena::Observable.new
+
+    def self.observable
+      @observable
+    end
+
+    def initialize(observable = self.class.observable)
+      logger.debug "initialize: observable=#{observable}"
 
       @state = State.new
-      @export = nil
-      @condition = Celluloid::Condition.new
+      @observable = observable
 
+      # XXX: restart if returns without raising?
       self.async.run
     end
+
+    protected
 
     # Synchronize container state from Docker
     #
     #
-    def sync(container)
-      @state.container! container.id, container.json
+    def sync_container(id)
+      @state.container! id, Docker::Container.get(id).info
     rescue Docker::NotFoundError
       # if the container is already gone, we may as well skip any events for it
-      @state.container! container.id, nil
+      @state.container! id, nil
     end
 
     # Synchronize container states from Docker
@@ -80,10 +89,10 @@ module Kontena::Registrator::Docker
       Docker::Container.all.each do |container|
         logger.debug "start: container #{container.id}"
 
-        sync container
+        sync_container container.id
       end
 
-      push
+      update
     end
 
     def run
@@ -100,43 +109,26 @@ module Kontena::Registrator::Docker
 
         elsif event.type == 'container'
           # sync container from Docker::Event
-          sync Docker::Container.new(Docker.connection, {id: event.id}.merge(event.actor.attributes))
+          sync_container event.id
         else
           # ignore
           next
         end
 
-        push
+        update
       end
 
     rescue Docker::Error::TimeoutError => error
-      logger.warning "run: restart on Docker timeout: #{error}"
+      logger.warn "run: restart on Docker timeout: #{error}"
     end
 
     # Update new state to consumers
-    def push
-      @export = @state.export
+    def update
+      state = @state.export
 
-      logger.debug "push: signal export=#{@export.inspect}"
+      logger.debug "update: state=#{state}"
 
-      @condition.signal
-    end
-
-    # Yield state, once at start and after each update
-    def pull
-      logger.debug "pull..."
-      
-      loop do
-        if export = @export
-          logger.debug "pull: export=#{export.inspect}"
-
-          yield export
-        end
-
-        logger.debug "pull: wait..."
-
-        @condition.wait
-      end
+      @observable.update(state)
     end
   end
 end

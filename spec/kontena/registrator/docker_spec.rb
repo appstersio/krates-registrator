@@ -10,7 +10,7 @@ describe Kontena::Registrator::Docker::Actor do
     it "Pushes an empty state" do
       actor = described_class.new
 
-      actor.pull do |state|
+      described_class.observable.observe do |state|
         expect(state.containers.to_a).to be_empty
         break
       end
