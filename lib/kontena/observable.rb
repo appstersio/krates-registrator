@@ -12,6 +12,7 @@ module Kontena
 
     # Update new state to consumers
     def update(value)
+      # XXX: threadsafe?
       @value = value
 
       logger.debug "update: #{value}"
@@ -21,11 +22,12 @@ module Kontena
 
     # Yield state, once at start and after each update
     #
-    # XXX: yield again if updated during yield evaluation...
+    # XXX: yield again immediately if updated during yield evaluation...
     def observe
       logger.debug "observe..."
 
       loop do
+        # XXX: threadsafe?
         if value = @value
           logger.debug "observe: #{value}"
 

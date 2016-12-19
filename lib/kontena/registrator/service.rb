@@ -8,64 +8,19 @@ module Kontena::Registrator
     include Kontena::Logging
     include Celluloid
 
-    # SkyDNS example
-    SKYDNS = {
-      context: {
-        domain: 'kontena.local',
-      },
-      where: [
-        proc { @container.networks.has_key? 'kontena' },
-        proc { !@container.networks['kontena']['IPAddress'].empty? },
-      ],
-      select: {
-        kontena_ip: proc { @container.networks['kontena']['IPAddress'] }
-      },
-      etcd: proc {
-        {
-          "/skydns/#{@domain.split('.').reverse.join('/')}/#{@container.hostname}" => {
-            host: @kontena_ip,
-          }.to_json,
-        }
-      }
-    }
-
-    def initialize(docker_observable, config)
+    def initialize(docker_observable, policy)
       @etcd_writer = Etcd::Writer.new
-      @config = config
+      @policy = policy
 
       self.async.run(docker_observable)
     end
 
-    def eval_container(container)
-      context = Eval::Context.new(container: container, **@config.fetch(:context, {}))
-
-      @config.fetch(:where, []).each do |expr|
-        if value = context.eval(expr)
-          logger.debug "container=#{container} where=#{expr} match value=#{value}"
-        else
-          logger.debug "container=#{container} where=#{expr} skip value=#{value}"
-          return
-        end
-      end
-
-      @config.fetch(:select, {}).each_pair do |sym, expr|
-        context.set(sym, expr)
-      end
-
-      logger.debug "container=#{container}: #{context}"
-
-      context.eval(@config.fetch(:etcd, {})).each do |path, value|
-        logger.debug "container=#{container} etcd=#{path} value=#{value.inspect}"
-
-        yield path, value if path && value
-      end
-    end
-
     def update(docker_state)
       logger.info "Update..."
+
       nodes = {}
       docker_state.containers.each do |container|
-        self.eval_container(container) do |path, value|
+        @policy.etcd_for_container(container) do |path, value|
           nodes[path] = value
         end
       end

@@ -52,6 +52,7 @@ GEM
       diff-lcs (>= 1.2.0, < 2.0)
       rspec-support (~> 3.5.0)
     rspec-support (3.5.0)
+    safe_yaml (1.0.4)
     timers (4.1.2)
       hitimes
 
@@ -64,6 +65,7 @@ DEPENDENCIES
   kontena-etcd!
   kontena-registrator!
   rspec (~> 3.5)!
+  safe_yaml!
 
 RUBY VERSION
    ruby 2.3.1p112
