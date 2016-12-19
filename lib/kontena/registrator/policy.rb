@@ -7,57 +7,31 @@ module Kontena::Registrator
 
     def self.load(path)
       name = File.basename(path)
+      policy = new(name)
 
-      # XXX: broken YAML tags
-      data = SafeYAML.load(File.read(path), path,
-        custom_initializers: {
-          'proc'  => lambda { STDERR.puts "Got !proc" },
-        },
-        raise_on_unknown_tag: true,
-      )
-      data = Hash[data.map{|key, value| [key.to_sym, value] }]
+      File.open(path, "r") do |file|
+        policy.load(file)
+      end
 
-      new(name, **data)
+      policy
     end
 
-    def initialize(name, env: {}, where: [], let: {}, etcd: {})
+    def initialize(name)
       @name = name
-      @env = Hash[env.map{|key, value| [key.to_sym, value]}]
-      @where = where
-      @let = let
-      @etcd = etcd
-
-      logger.debug self.inspect
     end
 
-    def context_for_container(container)
-      context = Eval::Context.new(container: container, **@env)
-
-      @where.each do |expr|
-        if value = context.eval(expr)
-          logger.debug "container=#{container} where=#{expr} match value=#{value}"
-        else
-          logger.debug "container=#{container} where=#{expr} skip value=#{value}"
-          return nil
-        end
-      end
-
-      @let.each_pair do |sym, expr|
-        context.set(sym, expr)
-      end
-
-      logger.debug "container=#{container}: #{context}"
-
-      return context
+    def load(file)
+      self.instance_eval(file.read, file.path)
     end
 
-    def etcd_for_container(container)
-      if context = context_for_container(container)
-        context.eval(@etcd).each do |path, value|
-          logger.debug "container=#{container} etcd=#{path} value=#{value.inspect}"
+    def docker_container(proc)
+      @container_proc = proc
+    end
 
-          yield path, value if path && value
-        end
+    def call(state)
+      state.containers.each do |container|
+        ret = @container_proc.call(container)
+        yield ret if ret
       end
     end
   end

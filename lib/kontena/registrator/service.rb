@@ -19,10 +19,8 @@ module Kontena::Registrator
       logger.info "Update..."
 
       nodes = {}
-      docker_state.containers.each do |container|
-        @policy.etcd_for_container(container) do |path, value|
-          nodes[path] = value
-        end
+      @policy.call(docker_state) do |container_nodes|
+        nodes.merge! container_nodes
       end
 
       @etcd_writer.write(nodes)

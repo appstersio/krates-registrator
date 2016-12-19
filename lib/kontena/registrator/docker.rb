@@ -136,6 +136,7 @@ module Kontena::Registrator::Docker
 
     rescue Docker::Error::TimeoutError => error
       logger.warn "run: restart on Docker timeout: #{error}"
+      raise
     end
 
     # Update new state to consumers

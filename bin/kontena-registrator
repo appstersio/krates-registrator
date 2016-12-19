@@ -6,27 +6,6 @@ require 'kontena/registrator/policy'
 
 registrator = Kontena::Registrator::Main.run!
 
-# SkyDNS example
-registrator.register(Kontena::Registrator::Policy.new('skydns',
-  env: {
-    domain: 'kontena.local',
-  },
-  where: [
-    proc { @container.networks.has_key? 'kontena' },
-    proc { !@container.networks['kontena']['IPAddress'].empty? },
-  ],
-  let: {
-    kontena_ip: proc { @container.networks['kontena']['IPAddress'] }
-  },
-  etcd: proc {
-    {
-      "/skydns/#{@domain.split('.').reverse.join('/')}/#{@container.hostname}" => {
-        host: @kontena_ip,
-      }.to_json,
-    }
-  }
-))
-
 ARGV.each do |path|
   registrator.register(Kontena::Registrator::Policy.load(path))
 end

@@ -6,7 +6,7 @@ module Kontena::Registrator::Eval
       end
     end
 
-    # Evaluate some expression in the context of this daemon
+    # Evaluate some expression in this context
     def eval(expr)
       case expr
       when String
@@ -23,6 +23,7 @@ module Kontena::Registrator::Eval
       end
     end
 
+    # Evaluate some expression and register the result for further evals
     def set(sym, expr)
       self.instance_variable_set("@#{sym}", self.eval(expr))
     end
