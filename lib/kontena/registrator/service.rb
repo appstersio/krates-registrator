@@ -8,11 +8,14 @@ module Kontena::Registrator
     include Kontena::Logging
     include Celluloid
 
+    ETCD_TTL = 30
+
     def initialize(docker_observable, policy)
-      @etcd_writer = Etcd::Writer.new
+      @etcd_writer = Etcd::Writer.new(ttl: ETCD_TTL)
       @policy = policy
 
       self.async.run(docker_observable)
+      self.async.refresh
     end
 
     def update(docker_state)
@@ -21,7 +24,15 @@ module Kontena::Registrator
       logger.info "Update with Docker #containers=#{docker_state.containers.size} => etcd #nodes=#{etcd_nodes.size}"
 
       @etcd_writer.update(etcd_nodes)
+    end
 
+    def refresh
+      interval = @etcd_writer.ttl / 2
+      logger.info "refreshing etcd every #{interval}..."
+
+      every(interval) do
+        @etcd_writer.refresh
+      end
     end
 
     def run(docker_observable)
