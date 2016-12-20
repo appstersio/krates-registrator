@@ -45,9 +45,11 @@ module Kontena::Registrator::Etcd
     end
 
     # Refresh currently active etcd nodes when using a TTL
+    #
+    # @raise [Etcd::KeyNotFound] if a node has already expired before we refresh it
     def refresh
       raise ArgumentError, "Refresh without TTL" unless @ttl
-      
+
       logger.debug "refresh #nodes=#{@nodes.size} with ttl=#{@ttl}"
 
       @nodes.each do |key, value|
