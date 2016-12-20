@@ -16,14 +16,12 @@ module Kontena::Registrator
     end
 
     def update(docker_state)
-      logger.info "Update..."
+      etcd_nodes = @policy.call(docker_state)
 
-      nodes = {}
-      @policy.call(docker_state) do |container_nodes|
-        nodes.merge! container_nodes
-      end
+      logger.info "Update with Docker #containers=#{docker_state.containers.size} => etcd #nodes=#{etcd_nodes.size}"
 
-      @etcd_writer.update(nodes)
+      @etcd_writer.update(etcd_nodes)
+
     end
 
     def run(docker_observable)

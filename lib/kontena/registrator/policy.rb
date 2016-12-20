@@ -29,10 +29,14 @@ module Kontena::Registrator
     end
 
     def call(state)
+      nodes = {}
+
       state.containers.each do |container|
         ret = @container_proc.call(container)
-        yield ret if ret
+        nodes.merge! ret if ret
       end
+
+      nodes
     end
   end
 end
