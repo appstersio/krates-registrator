@@ -1,6 +1,34 @@
 require 'kontena/registrator'
 require 'kontena/registrator/docker'
 
+describe Kontena::Registrator::Docker::State::Container, :docker => true do
+  context "for the test-1 container" do
+    subject { docker_container('test-1') }
+
+    it "has an ID" do
+      expect(subject.id).to eq '3a61cd3f565ba220a70d4331a3724f7423b64336b343315816f90f8f4d99af32'
+    end
+
+    it "has a name" do
+      expect(subject.name).to eq 'test-1'
+    end
+
+    it "has a hostname" do
+      expect(subject.hostname).to eq '3a61cd3f565b'
+    end
+  end
+end
+
+describe Kontena::Registrator::Docker::State, :docker => true do
+  context "for the test-1 and test-2 containers" do
+    subject { docker_state('test-1', 'test-2') }
+
+    it "has both containers" do
+      expect(subject.containers.map{|container| container.name}.sort).to eq ['test-1', 'test-2']
+    end
+  end
+end
+
 describe Kontena::Registrator::Docker::Actor do
   context "Without any running Docker containers", celluloid: true do
     before do

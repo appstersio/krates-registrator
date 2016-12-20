@@ -21,6 +21,8 @@ require 'celluloid/test'
 require 'kontena/etcd'
 require 'kontena/etcd/rspec'
 
+require_relative 'docker_helpers'
+
 # See http://rubydoc.info/gems/rspec-core/RSpec/Core/Configuration
 RSpec.configure do |config|
   # rspec-expectations config goes here. You can use an alternate
@@ -117,4 +119,6 @@ RSpec.configure do |config|
       Celluloid.shutdown
     end
   end
+
+  config.include DockerHelpers, :docker => true
 end

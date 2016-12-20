@@ -22,16 +22,21 @@ module Kontena::Registrator::Docker
         name
       end
 
+      # Dig into JSON fields
+      def [](*key)
+        @json.dig(*key)
+      end
+
       def name
-        @json['Name'].split('/').last
+        self['Name'].split('/').last
       end
 
       def hostname
-        @json['Config']['Hostname']
+        self['Config', 'Hostname']
       end
 
       def networks
-        @json['NetworkSettings']['Networks']
+        self['NetworkSettings', 'Networks']
       end
     end
 
