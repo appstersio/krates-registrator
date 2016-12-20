@@ -8,7 +8,7 @@ The `Kontena::Registrator` module implements generic Docker -> `etcd` mechanisms
 
 This needs the `kontena-etcd` gem vendored under `vendor/kontena`:
 
-`git clone git@github.com:SpComb/kontena-etcd.git vendor/kontena/kontena-etcd`
+`git submodule update --init`
 
 ## Usage
 
