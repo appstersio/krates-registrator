@@ -102,7 +102,7 @@ module Kontena::Registrator::Docker
     def start
       logger.debug "start..."
 
-      Docker::Container.all.each do |container|
+      Docker::Container.all(all: true).each do |container|
         logger.debug "start: container #{container.id}"
 
         sync_container container.id
