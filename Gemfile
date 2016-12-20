@@ -9,6 +9,11 @@ source 'https://rubygems.org' do
 
   group :test do
     gem 'rspec', '~> 3.5'
+
+    # XXX: transitive development dependencies from kontan-etcd
+    gem 'rack-test'
+    gem 'sinatra'
+    gem 'webmock'
   end
 
   gem 'kontena-etcd', :path => 'vendor/kontena/kontena-etcd'

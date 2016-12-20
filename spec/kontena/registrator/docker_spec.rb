@@ -1,3 +1,4 @@
+require 'kontena/registrator'
 require 'kontena/registrator/docker'
 
 describe Kontena::Registrator::Docker::Actor do

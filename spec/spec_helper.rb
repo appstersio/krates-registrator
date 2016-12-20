@@ -18,6 +18,8 @@
 $CELLULOID_BACKPORTED = false
 
 require 'celluloid/test'
+require 'kontena/etcd'
+require 'kontena/etcd/rspec'
 
 # See http://rubydoc.info/gems/rspec-core/RSpec/Core/Configuration
 RSpec.configure do |config|

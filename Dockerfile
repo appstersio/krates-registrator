@@ -7,7 +7,11 @@ RUN apk update && apk --update add ruby \
 RUN apk --update add --virtual build-dependencies ruby-dev build-base openssl-dev \
   && gem install bundler --no-ri --no-rdoc
 
-ADD vendor/kontena/ /app/vendor/kontena/
+ADD \
+  vendor/kontena/kontena-etcd/Gemfile \
+  vendor/kontena/kontena-etcd/Gemfile.lock \
+  vendor/kontena/kontena-etcd/*.gemspec \
+  /app/vendor/kontena/kontena-etcd/
 ADD Gemfile Gemfile.lock *.gemspec /app/
 
 WORKDIR /app
