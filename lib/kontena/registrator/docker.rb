@@ -6,40 +6,41 @@ require 'kontena/observable'
 require 'pp'
 
 module Kontena::Registrator::Docker
-  class State
-    # Immutable container state
-    class Container
-      attr_accessor :id
+  # Immutable container state
+  class Container
+    attr_accessor :id
 
-      def initialize(id, json)
-        @id = id
-        @json = json
+    def initialize(id, json)
+      @id = id
+      @json = json
 
-        self.freeze
-      end
-
-      def to_s
-        name
-      end
-
-      # Dig into JSON fields
-      def [](*key)
-        @json.dig(*key)
-      end
-
-      def name
-        self['Name'].split('/').last
-      end
-
-      def hostname
-        self['Config', 'Hostname']
-      end
-
-      def networks
-        self['NetworkSettings', 'Networks']
-      end
+      self.freeze
     end
 
+    def to_s
+      name
+    end
+
+    # Dig into JSON fields
+    def [](*key)
+      @json.dig(*key)
+    end
+
+    def name
+      self['Name'].split('/').last
+    end
+
+    def hostname
+      self['Config', 'Hostname']
+    end
+
+    def networks
+      self['NetworkSettings', 'Networks']
+    end
+  end
+
+  # Mutable Docker engine state, which can be frozen immutable for export
+  class State
     def initialize(containers = { })
       @containers = containers
     end

@@ -19,7 +19,7 @@ module DockerHelpers
   def docker_container(name)
     json = docker_fixture(:inspect, name).first
 
-    Kontena::Registrator::Docker::State::Container.new(json['Id'], json)
+    Kontena::Registrator::Docker::Container.new(json['Id'], json)
   end
 
   def docker_state(*names)

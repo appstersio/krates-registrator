@@ -1,7 +1,7 @@
 require 'kontena/registrator'
 require 'kontena/registrator/docker'
 
-describe Kontena::Registrator::Docker::State::Container, :docker => true do
+describe Kontena::Registrator::Docker::Container, :docker => true do
   context "for the test-1 container" do
     subject { docker_container('test-1') }
 
