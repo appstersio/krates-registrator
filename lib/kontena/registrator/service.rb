@@ -23,7 +23,7 @@ module Kontena::Registrator
         nodes.merge! container_nodes
       end
 
-      @etcd_writer.write(nodes)
+      @etcd_writer.update(nodes)
     end
 
     def run(docker_observable)

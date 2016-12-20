@@ -15,7 +15,7 @@ module Kontena::Registrator::Etcd
     # Update set of path => value nodes to etcd
     #
     # XXX: set with TTL + refresh to expire nodes on restart?
-    def write(nodes)
+    def update(nodes)
       nodes.each_pair do |key, value|
         if value != @nodes[key]
           @client.set(key, value: value)
