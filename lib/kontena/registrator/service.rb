@@ -10,12 +10,26 @@ module Kontena::Registrator
 
     ETCD_TTL = 30
 
-    def initialize(docker_observable, policy)
+    # @param docker_observable [Kontena::Observable<Kontena::Registrator::Docker::State>]
+    # @param policy [Kontena::Registrator::Policy]
+    def initialize(docker_observable, policy, start: true)
+      @docker_observable = docker_observable
       @etcd_writer = Etcd::Writer.new(ttl: ETCD_TTL)
       @policy = policy
 
-      self.async.run(docker_observable)
-      self.async.refresh
+      self.start if start
+    end
+
+    def start
+      refresh_interval = @etcd_writer.ttl / 2
+      logger.info "refreshing etcd every #{refresh_interval}s..."
+
+      self.async.run
+
+      # Run a refresh loop to keep etcd nodes alive
+      every(refresh_interval) do
+        self.refresh
+      end
     end
 
     # Apply @policy, and update etcd
@@ -29,23 +43,20 @@ module Kontena::Registrator
       @etcd_writer.update(etcd_nodes)
     end
 
-    # Run a refresh loop to keep etcd nodes alive
-    def refresh
-      interval = @etcd_writer.ttl / 2
-      logger.info "refreshing etcd every #{interval}s..."
+    # Observe Docker::State,
+    def run
+      logger.debug "observing #{@docker_observable}"
 
-      every(interval) do
-        @etcd_writer.refresh
+      @docker_observable.observe do |docker_state|
+        self.update(docker_state)
       end
     end
 
-    # Observe Docker::State,
-    def run(docker_observable)
-      logger.debug "observing #{docker_observable}"
-
-      docker_observable.observe do |docker_state|
-        self.update(docker_state)
-      end
+    # Refresh etcd nodes written by update
+    #
+    # Runs concurrently with run -> update
+    def refresh
+      @etcd_writer.refresh
     end
   end
 end

@@ -41,6 +41,7 @@ module Kontena::Registrator::Etcd
         end
       end
 
+      # XXX: concurrent with refresh?
       @nodes = nodes
     end
 
