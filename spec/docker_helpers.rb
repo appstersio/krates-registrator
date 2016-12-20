@@ -16,15 +16,15 @@ module DockerHelpers
     names.map{|name| docker_fixture(type, name)}.flatten
   end
 
-  def docker_container(name)
+  def docker_container_fixture(name)
     json = docker_fixture(:inspect, name).first
 
     Kontena::Registrator::Docker::Container.new(json['Id'], json)
   end
 
-  def docker_state(*names)
+  def docker_state_fixture(*names)
     containers = Hash[names.map{|name|
-      container = docker_container(name)
+      container = docker_container_fixture(name)
       [container.id, container]
     }]
     Kontena::Registrator::Docker::State.new(containers)

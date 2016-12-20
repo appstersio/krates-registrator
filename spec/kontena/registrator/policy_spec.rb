@@ -13,8 +13,12 @@ describe Kontena::Registrator::Policy do
       policy
     end
 
+    let :docker_state do
+      docker_state_fixture('test-1', 'test-2')
+    end
+
     it "returns etcd nodes for two containers" do
-      expect(subject.call(docker_state('test-1', 'test-2'))).to eq(
+      expect(subject.call(docker_state)).to eq(
         '/skydns/local/skydns/3a61cd3f565b' => '{"host":"172.18.0.2"}',
         '/skydns/local/skydns/e016ccf04dbb' => '{"host":"172.18.0.3"}',
       )
