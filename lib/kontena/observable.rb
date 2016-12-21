@@ -78,6 +78,8 @@ module Kontena
           active = @active
         }
 
+        sleep 0.0001 if $DEBUG
+
         if index > observe_index && value
           logger.debug "observe@#{index}: #{value}"
 
