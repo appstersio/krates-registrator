@@ -81,16 +81,8 @@ module Kontena
         include Kontena::Logging
         include Celluloid
 
-        # globally shared Docker state, updated by the running Docker::Actor, used
-        # by other Actors. This is global, so that other Actors can continue with
-        # a restarting Docker::Actor
-        @observable = Kontena::Observable.new
-
-        def self.observable
-          @observable
-        end
-
-        def initialize(observable = self.class.observable)
+        # @param observable [Kontena::Observable<State>]
+        def initialize(observable)
           logger.debug "initialize: observable=#{observable}"
 
           @state = State.new
