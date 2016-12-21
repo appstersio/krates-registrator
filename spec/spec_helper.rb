@@ -18,6 +18,8 @@
 $CELLULOID_BACKPORTED = false
 
 require 'celluloid/test'
+require 'webmock/rspec'
+
 require 'kontena/etcd'
 require 'kontena/etcd/rspec'
 require 'kontena/registrator'
@@ -110,7 +112,10 @@ RSpec.configure do |config|
   Kernel.srand config.seed
 =end
 
-  ## Celluloid support
+  # Use WebMock
+  WebMock.disable_net_connect!
+
+  # Celluloid support
   config.around :each, :celluloid => true do |example|
     Celluloid.boot
 
@@ -121,5 +126,6 @@ RSpec.configure do |config|
     end
   end
 
+  # Docker
   config.include DockerHelpers, :docker => true
 end

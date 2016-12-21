@@ -1,3 +1,5 @@
+require 'uri'
+
 module DockerHelpers
   FIXTURES_PATH = File.join(File.dirname(__FILE__), 'fixtures')
 
@@ -14,7 +16,7 @@ module DockerHelpers
   end
 
   def docker_container_fixture(name)
-    json = docker_fixture(:inspect, name).first
+    json = docker_fixture(:inspect, name)
 
     Kontena::Registrator::Docker::Container.new(json['Id'], json)
   end
@@ -25,5 +27,19 @@ module DockerHelpers
       [container.id, container]
     }]
     Kontena::Registrator::Docker::State.new(containers)
+  end
+
+  def stub_docker(path, **query)
+    uri = URI::HTTP.build(host: 'unix', path: "/v#{Docker::API_VERSION}/#{path}",
+      query: URI.encode_www_form(**query)
+    )
+
+    stub_request(:get, uri.to_s)
+      .to_return(
+        :headers => {
+          'Content-Type' => 'application/json',
+        },
+        :body => (yield).to_json,
+      )
   end
 end

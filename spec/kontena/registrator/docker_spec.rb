@@ -3,7 +3,7 @@ describe Kontena::Registrator::Docker::Container, :docker => true do
     subject { docker_container_fixture('test-1') }
 
     it "has an ID" do
-      expect(subject.id).to eq '3a61cd3f565ba220a70d4331a3724f7423b64336b343315816f90f8f4d99af32'
+      expect(subject.id).to eq '10c1de7f15b5596f53b7e8ef63d2f16d19da540ab34a402701c81633d090685d'
     end
 
     it "has a name" do
@@ -11,7 +11,7 @@ describe Kontena::Registrator::Docker::Container, :docker => true do
     end
 
     it "has a hostname" do
-      expect(subject.hostname).to eq '3a61cd3f565b'
+      expect(subject.hostname).to eq 'test-1'
     end
   end
 end
@@ -26,20 +26,51 @@ describe Kontena::Registrator::Docker::State, :docker => true do
   end
 end
 
-describe Kontena::Registrator::Docker::Actor do
-  context "Without any running Docker containers", celluloid: true do
+describe Kontena::Registrator::Docker::Actor, celluloid: true do
+  let :observable do
+    Kontena::Observable.new
+  end
+
+  subject do
+    described_class.new(observable, start: false)
+  end
+
+  context "Without any running Docker containers", :docker => true do
     before do
-      allow(Docker::Container).to receive(:all).and_return([])
-      allow(Docker::Event).to receive(:stream)
+      stub_docker('containers/json', all: true) { [] }
     end
 
-    it "Pushes an empty state" do
-      actor = described_class.new
+    describe '#sync' do
+      it "Updates an empty state" do
+        expect(observable).to receive(:update) { |state|
+          expect(state.containers.to_a).to be_empty
+        }
 
-      described_class.observable.observe do |state|
-        expect(state.containers.to_a).to be_empty
-        break
+        subject.sync_state
       end
+    end
+  end
+
+  context "With one running Docker container, and a second one starting", :docker => true do
+    before do
+      stub_docker('containers/json', all: true) { docker_fixture(:list, 'test-1') }
+      stub_docker('containers/10c1de7f15b5596f53b7e8ef63d2f16d19da540ab34a402701c81633d090685d/json') { docker_fixture(:inspect, 'test-1') }
+      stub_docker('events') {
+        docker_fixture(:events, 'test-2_01-create')
+      }
+      stub_docker('containers/1d82bdcf1715d2717e788a721ce3a95e61d8d6e99f0dab3d57f929bb601d1004/json') { docker_fixture(:inspect, 'test-2') }
+    end
+
+    it "Updates state from one to two containers" do
+      expect(observable).to receive(:update).once { |state|
+        expect(state.containers.map{|container| container.name}).to eq ['test-1']
+      }
+      expect(observable).to receive(:update).once { |state|
+        expect(state.containers.map{|container| container.name}).to eq ['test-1', 'test-2']
+      }
+
+      subject.sync_state
+      subject.run
     end
   end
 end
