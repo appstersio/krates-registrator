@@ -2,10 +2,10 @@ require 'logger'
 
 module Kontena
   module Logging
-    def logger!
+    def logger!(progname: self.class.name)
       logger = Logger.new(STDERR)
       logger.level = Logger::DEBUG
-      logger.progname = self.class.name
+      logger.progname = progname
 
       return logger
     end
