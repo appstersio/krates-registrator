@@ -64,7 +64,7 @@ module Kontena
     # @yield [value]
     # @return nil
     def observe
-      logger = logger! progname: "#{self.class.name}[#{Thread.current}]"
+      logger = self.logger progname: "#{self.class.name}[#{Thread.current}]"
       logger.debug "observe..."
 
       observe_index = 0

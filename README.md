@@ -22,6 +22,14 @@ Run with a Ruby policy:
 
 ## Config
 
+### `LOG_LEVEL=...`
+
+* `debug`
+* `info`
+* `warn`
+* `error`
+* `fatal`
+
 ### `ETCD_ENDPOINT=http://127.0.0.1:2379`
 
 Connect to etcd
