@@ -51,7 +51,7 @@ describe Kontena::Registrator::Docker::Actor, celluloid: true do
     end
   end
 
-  context "With one running Docker container, and a second one starting", :docker => true do
+  context "With one running Docker container, and a second one created", :docker => true do
     before do
       stub_docker('containers/json', all: true) { docker_fixture(:list, 'test-1') }
       stub_docker('containers/10c1de7f15b5596f53b7e8ef63d2f16d19da540ab34a402701c81633d090685d/json') { docker_fixture(:inspect, 'test-1') }
