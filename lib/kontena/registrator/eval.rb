@@ -1,6 +1,9 @@
 module Kontena
   class Registrator
-    # XXX: this module is currently not used, intended for a custom policy language
+    # TODO: this module is currently not used
+    #
+    # This dynamic Eval module is intended for a future custom policy language,
+    # which would allow loading untrusted user-defined Policies from etcd
     module Eval
       class Context
         def initialize(**context)
@@ -13,7 +16,7 @@ module Kontena
         def eval(expr)
           case expr
           when String
-            # XXX: late interpolate?
+            # TODO: late interpolate?
             return expr # self.instance_eval('%Q[' + expr + ']')
           when Proc
             return self.instance_eval(&expr)
