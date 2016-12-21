@@ -7,9 +7,18 @@ module Kontena
   # The observing actors refresh their state based on updates to this shared value.
   # They do not necessarily care about each update, as long as they have observed
   # the most recent update.
+  #
+  # @attr value Most recently updated value, initially nil
+  # @attr index [Integer] Incremented on each update, initially zero
+  # @attr active [Boolean] Set by #close to signal #observe to stop
+  # @attr condition [Celluloid::Condition]
+  # @attr mutex [Mutex]
   class Observable
     include Kontena::Logging
 
+    # Initialize with a nil value.
+    #
+    # Any initial #observe will block until the first #update
     def initialize
       @value = nil
       @index = 0
@@ -19,7 +28,9 @@ module Kontena
       @mutex = Mutex.new
     end
 
-    # Update new state to consumers
+    # Update new value
+    #
+    # @param value the value to be yielded by #observe
     def update(value)
       raise "Observable is closed" unless @active
 
@@ -46,11 +57,12 @@ module Kontena
       @condition.broadcast
     end
 
-    # Yield state, once at start and after each update.
+    # Yield updated value, once at start and then after each update.
     #
     # Returns once the Observable is closed.
     #
-    # XXX: yield again immediately if updated during yield evaluation...
+    # @yield [value]
+    # @return nil
     def observe
       logger = logger! progname: "#{self.class.name}[#{Thread.current}]"
       logger.debug "observe..."
@@ -59,7 +71,7 @@ module Kontena
 
       loop do
         index = value = active = nil
-        
+
         @mutex.synchronize {
           index = @index
           value = @value

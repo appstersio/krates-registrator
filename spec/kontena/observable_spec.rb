@@ -55,7 +55,7 @@ describe Kontena::Observable, :celluloid => true do
   it "each actor observes the last value updated by one actor" do
     range = 'AA'..'DZ'
 
-    update_actor = updater_class.new(subject)
+    # start a number of observers
     observer_actors = (1..10).map {
       observer_class.new(subject)
     }
@@ -63,10 +63,9 @@ describe Kontena::Observable, :celluloid => true do
       actor.future.run
     }
 
-    # run a large number of Updates
+    # run a large number of Updates, and then close the Observable
+    update_actor = updater_class.new(subject)
     update_actor.run(range)
-
-    # allow the observing actors to return
     subject.close
 
     # collect results
