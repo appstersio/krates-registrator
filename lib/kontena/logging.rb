@@ -19,9 +19,9 @@ module Kontena
         @log_level = level
       end
 
-      def logger(progname: self.class.name, level: @log_level || Kontena::Logging.log_level)
+      def logger(progname, level: nil)
         logger = Logger.new(STDERR)
-        logger.level = level
+        logger.level = level || @log_level || Kontena::Logging.log_level
         logger.progname = progname
 
         return logger
@@ -33,11 +33,11 @@ module Kontena
     end
 
     # @return [Logger]
-    def logger(**opts)
-      if opts
-        self.class.logger **opts
+    def logger(progname = nil, **opts)
+      if progname
+        self.class.logger progname, **opts
       else
-        @logger ||= self.class.logger
+        @logger ||= self.class.logger self.class.name
       end
     end
   end
