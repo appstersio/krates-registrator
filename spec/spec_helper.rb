@@ -20,6 +20,7 @@ $CELLULOID_BACKPORTED = false
 require 'celluloid/test'
 require 'kontena/etcd'
 require 'kontena/etcd/rspec'
+require 'kontena/registrator'
 
 require_relative 'docker_helpers'
 

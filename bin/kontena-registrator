@@ -1,10 +1,9 @@
 #!/usr/bin/env ruby
 
 require 'celluloid/current'
-require 'kontena/registrator/main'
-require 'kontena/registrator/policy'
+require 'kontena/registrator'
 
-registrator = Kontena::Registrator::Main.run!
+registrator = Kontena::Registrator.run!
 
 ARGV.each do |path|
   registrator.register(Kontena::Registrator::Policy.load(path))

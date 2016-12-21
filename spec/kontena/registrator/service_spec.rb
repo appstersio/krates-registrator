@@ -1,7 +1,3 @@
-require 'kontena/registrator'
-require 'kontena/registrator/service'
-require 'kontena/registrator/policy'
-
 describe Kontena::Registrator::Service do
   let :docker_observable do
     instance_double(Kontena::Observable)

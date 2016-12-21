@@ -1,6 +1,3 @@
-require 'kontena/registrator'
-require 'kontena/registrator/policy'
-
 describe Kontena::Registrator::Policy do
   context "for a sample SkyDNS policy", :docker => true do
     subject do

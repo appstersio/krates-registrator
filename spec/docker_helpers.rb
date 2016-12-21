@@ -1,6 +1,3 @@
-require 'kontena/registrator'
-require 'kontena/registrator/docker'
-
 module DockerHelpers
   FIXTURES_PATH = File.join(File.dirname(__FILE__), 'fixtures')
 
