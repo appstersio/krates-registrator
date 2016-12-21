@@ -15,10 +15,10 @@ describe Kontena::Observable, :celluloid => true do
         @observable = observable
       end
 
-      def run(last)
+      def run(range)
         logger.debug "updater run start"
 
-        for value in 1..last do
+        for value in range do
           @observable.update(value)
         end
 
@@ -53,7 +53,7 @@ describe Kontena::Observable, :celluloid => true do
   end
 
   it "each actor observes the last value updated by one actor" do
-    $CELLULOID_DEBUG = true
+    range = 'AA'..'DZ'
 
     update_actor = updater_class.new(subject)
     observer_actors = (1..10).map {
@@ -64,7 +64,7 @@ describe Kontena::Observable, :celluloid => true do
     }
 
     # run a large number of Updates
-    update_actor.run(1000)
+    update_actor.run(range)
 
     # allow the observing actors to return
     subject.close
@@ -74,7 +74,8 @@ describe Kontena::Observable, :celluloid => true do
       future.value
     }
 
-    expect(observer_results).to eq [1000] * 10
+    # ensure that each observer has seen the last updated value
+    expect(observer_results).to eq [range.last] * 10
 
   end
 end

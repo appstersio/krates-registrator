@@ -5,24 +5,30 @@ module Kontena
   # Share a value updated by one Actor and observed by multiple Actors.
   #
   # The observing actors refresh their state based on updates to this shared value.
-  # They do not necessarily care about each change, as long as they are up to date.
+  # They do not necessarily care about each update, as long as they have observed
+  # the most recent update.
   class Observable
     include Kontena::Logging
 
     def initialize
       @value = nil
-      @condition = Celluloid::Condition.new
+      @index = 0
       @active = true
+
+      @condition = Celluloid::Condition.new
+      @mutex = Mutex.new
     end
 
     # Update new state to consumers
     def update(value)
       raise "Observable is closed" unless @active
 
-      # XXX: threadsafe?
-      @value = value
+      @mutex.synchronize {
+        @value = value
+        @index += 1
+      }
 
-      logger.debug "update: #{value}"
+      logger.debug "update@#{@index}: #{value}"
 
       @condition.broadcast
     end
@@ -31,7 +37,12 @@ module Kontena
     #
     # The Observable can no longer be updated, and all observing actors will return.
     def close
-      @active = false
+      @mutex.synchronize {
+        @active = false
+      }
+
+      logger.debug "close@#{@index}"
+
       @condition.broadcast
     end
 
@@ -41,20 +52,36 @@ module Kontena
     #
     # XXX: yield again immediately if updated during yield evaluation...
     def observe
+      logger = logger! progname: "#{self.class.name}[#{Thread.current}]"
       logger.debug "observe..."
 
-      while @active
-        # XXX: threadsafe?
-        if value = @value
-          logger.debug "observe: #{value}"
+      observe_index = 0
+
+      loop do
+        index = value = active = nil
+        
+        @mutex.synchronize {
+          index = @index
+          value = @value
+          active = @active
+        }
+
+        if index > observe_index && value
+          logger.debug "observe@#{index}: #{value}"
 
           yield value
-        end
 
-        if @active
-          logger.debug "observe: wait..."
+          observe_index = index
+
+        elsif active
+          logger.debug "observe@#{observe_index}: wait..."
 
           @condition.wait
+
+        else
+          logger.debug "observe@#{observe_index}: done"
+
+          break
         end
       end
     end
