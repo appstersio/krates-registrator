@@ -73,4 +73,27 @@ describe Kontena::Registrator::Docker::Actor, celluloid: true do
       subject.run
     end
   end
+
+  context "With two running Docker containers, and the second one is destroyed", :docker => true do
+    before do
+      stub_docker('containers/json', all: true) { docker_fixtures(:list, 'test-1', 'test-2') }
+      stub_docker('containers/10c1de7f15b5596f53b7e8ef63d2f16d19da540ab34a402701c81633d090685d/json') { docker_fixture(:inspect, 'test-1') }
+      stub_docker('containers/1d82bdcf1715d2717e788a721ce3a95e61d8d6e99f0dab3d57f929bb601d1004/json') { docker_fixture(:inspect, 'test-2') }
+      stub_docker('events') {
+        docker_fixture(:events, 'test-2_20-destroy')
+      }
+    end
+
+    it "Updates state from two to one containers" do
+      expect(observable).to receive(:update).once { |state|
+        expect(state.containers.map{|container| container.name}).to eq ['test-1', 'test-2']
+      }
+      expect(observable).to receive(:update).once { |state|
+        expect(state.containers.map{|container| container.name}).to eq ['test-1']
+      }
+
+      subject.sync_state
+      subject.run
+    end
+  end
 end

@@ -9,6 +9,9 @@ module DockerHelpers
     File.open(path) do |file|
       JSON.load(file)
     end
+
+  rescue JSON::ParserError => error
+    raise "Invalid #{path}: #{error}"
   end
 
   def docker_fixtures(type, *names)

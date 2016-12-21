@@ -1,0 +1,1 @@
+{"status":"destroy","id":"1d82bdcf1715d2717e788a721ce3a95e61d8d6e99f0dab3d57f929bb601d1004","from":"debian:jessie","Type":"container","Action":"destroy","Actor":{"ID":"1d82bdcf1715d2717e788a721ce3a95e61d8d6e99f0dab3d57f929bb601d1004","Attributes":{"image":"debian:jessie","name":"test-2"}},"time":1482327255,"timeNano":1482327255496452981}
