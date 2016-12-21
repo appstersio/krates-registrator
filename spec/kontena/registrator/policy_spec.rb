@@ -16,8 +16,8 @@ describe Kontena::Registrator::Policy do
 
     it "returns etcd nodes for two containers" do
       expect(subject.call(docker_state)).to eq(
-        '/skydns/local/skydns/3a61cd3f565b' => '{"host":"172.18.0.2"}',
-        '/skydns/local/skydns/e016ccf04dbb' => '{"host":"172.18.0.3"}',
+        '/skydns/local/skydns/test-1' => '{"host":"172.18.0.2"}',
+        '/skydns/local/skydns/test-2' => '{"host":"172.18.0.3"}',
       )
     end
   end

@@ -39,7 +39,7 @@ describe Kontena::Registrator::Service do
     before do
       expect(docker_observable).to receive(:observe).and_yield(docker_state)
       expect(policy).to receive(:call).with(docker_state).and_return(
-        '/kontena/test/3a61cd3f565b' => '{"host":"172.18.0.2"}',
+        '/kontena/test/test-1' => '{"host":"172.18.0.2"}',
       )
     end
 
@@ -48,7 +48,7 @@ describe Kontena::Registrator::Service do
 
       expect(etcd_server).to be_modified
       expect(etcd_server.nodes).to eq(
-        '/kontena/test/3a61cd3f565b' => { 'host' => "172.18.0.2" },
+        '/kontena/test/test-1' => { 'host' => "172.18.0.2" },
       )
     end
 
@@ -58,7 +58,7 @@ describe Kontena::Registrator::Service do
 
       expect(etcd_server).to be_modified
       expect(etcd_server.nodes).to eq(
-        '/kontena/test/3a61cd3f565b' => { 'host' => "172.18.0.2" },
+        '/kontena/test/test-1' => { 'host' => "172.18.0.2" },
       )
     end
   end
