@@ -1,5 +1,6 @@
 module Kontena
   class Registrator
+    # XXX: this module is currently not used, intended for a custom policy language
     module Eval
       class Context
         def initialize(**context)

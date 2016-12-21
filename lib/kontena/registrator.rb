@@ -10,8 +10,14 @@ module Kontena
 
     include Kontena::Logging
 
+    # Update the global Docker::Actor.observable
     supervise type: Docker::Actor, as: :docker
 
+    # Supervise a new Service for the given Policy
+    #
+    # Uses the shard Docker::Actor.observable
+    #
+    # @param policy [Kontena::Registrator::Policy]
     def register(policy)
       supervisor = Service.supervise args: [Docker::Actor.observable, policy]
 

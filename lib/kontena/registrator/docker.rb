@@ -8,6 +8,7 @@ require 'kontena/observable'
 
 module Kontena
   class Registrator
+    # Follow Docker containers
     module Docker
       # Immutable container state
       class Container
@@ -75,10 +76,14 @@ module Kontena
         end
       end
 
+      # Observe Docker State
       class Actor
         include Kontena::Logging
         include Celluloid
 
+        # globally shared Docker state, updated by the running Docker::Actor, used
+        # by other Actors. This is global, so that other Actors can continue with
+        # a restarting Docker::Actor
         @observable = Kontena::Observable.new
 
         def self.observable
@@ -99,7 +104,7 @@ module Kontena
 
         # Synchronize container state from Docker
         #
-        #
+        # @param id [String] Docker::Container ID
         def sync_container(id)
           @state.container! id, ::Docker::Container.get(id).info
         rescue ::Docker::NotFoundError
@@ -120,6 +125,7 @@ module Kontena
           update
         end
 
+        # Watch container events from Docker
         def run
           self.start
 

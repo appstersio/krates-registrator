@@ -5,6 +5,7 @@ require 'kontena/etcd'
 
 module Kontena
   class Registrator
+    # Apply a Policy against Docker::State and update Kontena::Etcd::Writer
     class Service
       include Kontena::Logging
       include Celluloid
@@ -13,6 +14,7 @@ module Kontena
 
       # @param docker_observable [Kontena::Observable<Kontena::Registrator::Docker::State>]
       # @param policy [Kontena::Registrator::Policy]
+      # @param start [Boolean] autostart when supervised, set to false for test cases
       def initialize(docker_observable, policy, start: true)
         @docker_observable = docker_observable
         @etcd_writer = Kontena::Etcd::Writer.new(ttl: ETCD_TTL)
@@ -21,6 +23,7 @@ module Kontena
         self.start if start
       end
 
+      # Start update+refresh loop
       def start
         refresh_interval = @etcd_writer.ttl / 2
         logger.info "refreshing etcd every #{refresh_interval}s..."
@@ -44,7 +47,7 @@ module Kontena
         @etcd_writer.update(etcd_nodes)
       end
 
-      # Observe Docker::State,
+      # Loop on Docker::State and update
       def run
         logger.debug "observing #{@docker_observable}"
 
