@@ -11,8 +11,7 @@ module Kontena
   # @attr value Most recently updated value, initially nil
   # @attr index [Integer] Incremented on each update, initially zero
   # @attr active [Boolean] Set by #close to signal #observe to stop
-  # @attr condition [Celluloid::Condition]
-  # @attr mutex [Mutex]
+  # @attr condition [Celluloid::Condition] wake up idle observers on update
   class Observable
     include Celluloid
     include Kontena::Logging
@@ -81,7 +80,7 @@ module Kontena
         else
           logger.debug "observe@#{index}: done"
 
-          break
+          return
         end
       end
     end
