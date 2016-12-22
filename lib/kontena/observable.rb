@@ -63,29 +63,23 @@ module Kontena
       logger = self.logger "#{self.class.name}[#{block.object_id}]"
       logger.debug "observe..."
 
-      observe_index = 0
+      index = 0
 
       loop do
-        index = value = active = nil
+        if @index > index && @value
+          index = @index
 
-        index = @index
-        value = @value
-        active = @active
+          logger.debug "observe@#{index}: #{@value}"
 
-        if index > observe_index && value
-          logger.debug "observe@#{index}: #{value}"
+          yield @value
 
-          yield value
-
-          observe_index = index
-
-        elsif active
-          logger.debug "observe@#{observe_index}: wait..."
+        elsif @active
+          logger.debug "observe@#{index}: wait..."
 
           @condition.wait
 
         else
-          logger.debug "observe@#{observe_index}: done"
+          logger.debug "observe@#{index}: done"
 
           break
         end
