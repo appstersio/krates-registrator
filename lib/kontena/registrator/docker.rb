@@ -24,8 +24,12 @@ module Kontena::Registrator::Docker
     end
 
     # Dig into JSON fields
+    #
+    # Normalizes empty strings to nil
     def [](*key)
-      @json.dig(*key)
+      value = @json.dig(*key)
+      value = nil if value == ""
+      value
     end
 
     def name
@@ -38,6 +42,14 @@ module Kontena::Registrator::Docker
 
     def networks
       self['NetworkSettings', 'Networks']
+    end
+
+    def network(name)
+      self['NetworkSettings', 'Networks', name]
+    end
+
+    def network_ip(name)
+      self['NetworkSettings', 'Networks', name, 'IPAddress']
     end
   end
 
