@@ -53,7 +53,6 @@ describe Kontena::Observable, :celluloid => true do
   end
 
   it "each actor observes the last value updated by one actor" do
-    $DEBUG = true
     range = 'AA'..'DZ'
 
     # start a number of observers

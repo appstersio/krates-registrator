@@ -14,6 +14,7 @@ module Kontena
   # @attr condition [Celluloid::Condition]
   # @attr mutex [Mutex]
   class Observable
+    include Celluloid
     include Kontena::Logging
 
     # Initialize with a nil value.
@@ -25,7 +26,6 @@ module Kontena
       @active = true
 
       @condition = Celluloid::Condition.new
-      @mutex = Mutex.new
     end
 
     # Update new value
@@ -34,10 +34,8 @@ module Kontena
     def update(value)
       raise "Observable is closed" unless @active
 
-      @mutex.synchronize {
-        @value = value
-        @index += 1
-      }
+      @value = value
+      @index += 1
 
       logger.debug "update@#{@index}: #{value}"
 
@@ -48,9 +46,7 @@ module Kontena
     #
     # The Observable can no longer be updated, and all observing actors will return.
     def close
-      @mutex.synchronize {
-        @active = false
-      }
+      @active = false
 
       logger.debug "close@#{@index}"
 
@@ -63,8 +59,8 @@ module Kontena
     #
     # @yield [value]
     # @return nil
-    def observe
-      logger = self.logger "#{self.class.name}[#{Thread.current}]"
+    def observe(&block)
+      logger = self.logger "#{self.class.name}[#{block.object_id}]"
       logger.debug "observe..."
 
       observe_index = 0
@@ -72,13 +68,9 @@ module Kontena
       loop do
         index = value = active = nil
 
-        @mutex.synchronize {
-          index = @index
-          value = @value
-          active = @active
-        }
-
-        sleep 0.0001 if $DEBUG
+        index = @index
+        value = @value
+        active = @active
 
         if index > observe_index && value
           logger.debug "observe@#{index}: #{value}"
