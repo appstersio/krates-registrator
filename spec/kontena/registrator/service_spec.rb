@@ -19,7 +19,7 @@ describe Kontena::Registrator::Service do
 
     it "does not write anything to etcd" do
       expect(docker_observable).to receive(:observe).and_yield(docker_state)
-      expect(policy).to receive(:call).with(docker_state).and_return({})
+      expect(policy).to receive(:apply).with(docker_state).and_return({})
 
       subject.run
 
@@ -38,7 +38,7 @@ describe Kontena::Registrator::Service do
 
     before do
       expect(docker_observable).to receive(:observe).and_yield(docker_state)
-      expect(policy).to receive(:call).with(docker_state).and_return(
+      expect(policy).to receive(:apply).with(docker_state).and_return(
         '/kontena/test/test-1' => '{"host":"172.18.0.2"}',
       )
     end

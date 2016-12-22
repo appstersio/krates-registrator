@@ -2,9 +2,9 @@ describe Kontena::Registrator::Policy do
   context "for a sample SkyDNS policy", :docker => true do
     subject do
       policy = described_class.new(:skydns)
-      policy.docker_container -> (container) {
+      policy.context.docker_container -> (container) {
         {
-          "/skydns/local/skydns/#{container.hostname}" => { host: container['NetworkSettings', 'IPAddress'] }.to_json,
+          "/skydns/local/skydns/#{container.hostname}" => { host: container['NetworkSettings', 'IPAddress'] },
         }
       }
       policy
@@ -15,7 +15,7 @@ describe Kontena::Registrator::Policy do
     end
 
     it "returns etcd nodes for two containers" do
-      expect(subject.call(docker_state)).to eq(
+      expect(subject.apply(docker_state)).to eq(
         '/skydns/local/skydns/test-1' => '{"host":"172.18.0.2"}',
         '/skydns/local/skydns/test-2' => '{"host":"172.18.0.3"}',
       )

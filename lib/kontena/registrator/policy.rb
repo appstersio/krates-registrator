@@ -18,36 +18,69 @@ module Kontena
         policy
       end
 
-      attr_accessor :name
+      attr_accessor :name, :context
 
       def initialize(name)
         @name = name
+        @context = Context.new
       end
 
       # Evaluate .rb DSL
       #
       # @param file [File]
       def load(file)
-        self.instance_eval(file.read, file.path)
+         @context.instance_eval(file.read, file.path)
       end
 
-      # Register a Docker::Container handler
+      # Evaluation context for DSL
+      class Context
+        def [](sym)
+          instance_variable_get("@#{sym}")
+        end
+
+        # Register a Docker::Container handler
+        #
+        # * returning nil is equivalent to returning an empty Hash
+        # * nil values are elided
+        # * String values are kept as raw strings
+        # * Object values are encoded to JSON
+        #
+        # @param proc [Proc] Kontena::Registrator::Docker::Container -> Hash{String => nil, String, JSON>
+        def docker_container(proc)
+          @docker_container = proc
+        end
+      end
+
+      # Normalize policy nodes to etcd nodes
       #
-      # @param proc [Proc] Kontena::Registrator::Docker::Container -> Hash<String, String>
-      def docker_container(proc)
-        @container_proc = proc
+      # @param nodes [Hash{String => nil, String, JSON}]
+      # @return nodes [Hash{String => String}]
+      def apply_nodes(nodes)
+        return {} if nodes.nil?
+
+        Hash[nodes.map{|key, value|
+          case value
+          when nil
+            next
+          when String
+            [key, value]
+          when true, false, Integer, Float, Array, Hash
+            [key, value.to_json]
+          else
+            raise TypeError, "Invalid value for etcd #{key}: #{value.inspect}"
+          end
+        }]
       end
 
       # Compile a Docker::State into a set of etcd nodes
       #
       # @param state [Kontena::Registrator::Docker::State]
       # @return [Hash<String, String>] nodes for Kontena::Etcd::Writer
-      def call(state)
+      def apply(state)
         nodes = {}
 
         state.containers.each do |container|
-          ret = @container_proc.call(container)
-          nodes.merge! ret if ret
+          nodes.merge! apply_nodes @context[:docker_container].call(container)
         end
 
         nodes

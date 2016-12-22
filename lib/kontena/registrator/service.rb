@@ -40,7 +40,7 @@ module Kontena
       #
       # @param docker_state [Docker::State]
       def update(docker_state)
-        etcd_nodes = @policy.call(docker_state)
+        etcd_nodes = @policy.apply(docker_state)
 
         logger.info "Update with Docker #containers=#{docker_state.containers.size} => etcd #nodes=#{etcd_nodes.size}"
 
