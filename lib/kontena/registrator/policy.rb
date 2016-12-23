@@ -6,7 +6,7 @@ class Kontena::Registrator::Policy
 
   # @param path [String] filesystem path to .rb file
   def self.load(path)
-    name = File.basename(path)
+    name = File.basename(path, '.*')
     policy = new(name)
 
     File.open(path, "r") do |file|
@@ -20,7 +20,11 @@ class Kontena::Registrator::Policy
 
   def initialize(name)
     @name = name
-    @context = Context.new
+    @context = LoadContext.new
+  end
+
+  def to_s
+    "#{@name}"
   end
 
   # Evaluate .rb DSL
@@ -28,12 +32,27 @@ class Kontena::Registrator::Policy
   # @param file [File]
   def load(file)
      @context.instance_eval(file.read, file.path)
+     @context.freeze # XXX: deep-freeze?
   end
 
-  # Evaluation context for DSL
-  class Context
+  # Load-time evaluation context for DSL
+  class LoadContext
     def [](sym)
       instance_variable_get("@#{sym}")
+    end
+
+    # Declare a Kontena::Etcd::Model used to configure policy services
+    def config(&block)
+      @config = Class.new do
+        include Kontena::Etcd::Model
+        include Kontena::JSON::Model
+
+        def to_s
+          "#{etcd_key}"
+        end
+      end
+
+      @config.instance_eval(&block)
     end
 
     # Register a Docker::Container handler
@@ -47,6 +66,18 @@ class Kontena::Registrator::Policy
     def docker_container(proc)
       @docker_container = proc
     end
+  end
+
+  # Is the Policy configurable?
+  def config?
+    return @context[:config] != nil
+  end
+
+  # Return any configuration model class that this policy has
+  #
+  # @return [nil, Class<Kontena::Etcd::Model>]
+  def config_model
+    return @context[:config]
   end
 
   # Normalize policy nodes to etcd nodes
@@ -74,13 +105,28 @@ class Kontena::Registrator::Policy
   #
   # @param state [Kontena::Registrator::Docker::State]
   # @return [Hash<String, String>] nodes for Kontena::Etcd::Writer
-  def apply(state)
+  def apply(state, context)
     nodes = {}
 
     state.containers.each do |container|
-      nodes.merge! apply_nodes @context[:docker_container].call(container)
+      nodes.merge! apply_nodes context.instance_exec(container, &@context[:docker_container])
     end
 
     nodes
+  end
+
+  def apply_context(config = nil)
+    ApplyContext.new(config)
+  end
+
+  # Apply-time evaluation context for DSL procs
+  # One policy may have multiple Services, each with a different ApplyContext...
+  class ApplyContext
+    attr_reader :config
+
+    def initialize(config = nil)
+      @config = config
+      @config.freeze
+    end
   end
 end
