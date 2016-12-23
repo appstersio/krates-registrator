@@ -13,10 +13,11 @@ class Kontena::Registrator::Service
   # @param docker_observable [Kontena::Observable<Kontena::Registrator::Docker::State>]
   # @param policy [Kontena::Registrator::Policy]
   # @param start [Boolean] autostart when supervised, set to false for test cases
-  def initialize(docker_observable, policy, start: true)
+  def initialize(docker_observable, policy, config, start: true)
     @docker_observable = docker_observable
     @etcd_writer = Kontena::Etcd::Writer.new(ttl: ETCD_TTL)
     @policy = policy
+    @context = policy.apply_context(config)
 
     self.start if start
   end
@@ -34,11 +35,20 @@ class Kontena::Registrator::Service
     end
   end
 
+  # Update config while running
+  #
+  # This is different from a restart, in that it preserves the Etcd::Writer state
+  def reload(config)
+    @context = @policy.apply_context(config)
+
+    # XXX: self.update(...)
+  end
+
   # Apply @policy, and update etcd
   #
   # @param docker_state [Docker::State]
   def update(docker_state)
-    etcd_nodes = @policy.apply(docker_state)
+    etcd_nodes = @policy.apply(docker_state, @context)
 
     logger.info "Update with Docker #containers=#{docker_state.containers.size} => etcd #nodes=#{etcd_nodes.size}"
 
