@@ -161,6 +161,7 @@ describe Kontena::Registrator::Manager, :celluloid => true do
       expect(subject.wrapped_object).to receive(:create).once.with(policy, config2).and_call_original
       expect(Kontena::Registrator::Service).to receive(:new).with(policy, config2, docker_observable: docker_observable).and_return(service2)
       expect(subject.wrapped_object).to receive(:remove).once.with(policy, 'test1').and_call_original
+      expect(service1).to receive(:stop)
 
       subject.run
 
@@ -169,7 +170,7 @@ describe Kontena::Registrator::Manager, :celluloid => true do
     end
   end
 
-  context "For a service that fails to intialize" do
+  context "For a service that fails to initialize" do
     let :service_class do
       Class.new do
         include Celluloid

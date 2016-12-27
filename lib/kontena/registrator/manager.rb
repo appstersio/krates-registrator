@@ -106,7 +106,6 @@ class Kontena::Registrator::Manager
       logger.info "create policy=#{policy} with config=#{config}: #{service}"
     end
 
-
     @services[[policy, config_key]] = service
   end
 
@@ -138,8 +137,12 @@ class Kontena::Registrator::Manager
 
     logger.info "remove policy=#{policy} with config=#{config_path}: #{service}"
 
-    # XXX TODO: service.remove
-    fail
+    begin
+      service.stop
+    rescue => error
+      raise ServiceError, "stop: #{error}"
+    ensure
+      @services.delete([policy, config_path])
+    end
   end
-
 end

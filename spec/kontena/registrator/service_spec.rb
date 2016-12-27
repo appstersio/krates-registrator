@@ -174,5 +174,29 @@ describe Kontena::Registrator::Service do
         )
       end
     end
+
+    context "for a single Docker container can be stopped", :docker => true do
+      let :docker_state do
+        docker_state_fixture('test-1')
+      end
+
+      it "writes one node to etcd" do
+        expect(policy).to receive(:apply).with(docker_state, apply_context).and_return(
+          '/kontena/test/test-1' => '{"host":"172.18.0.2"}',
+        )
+
+        expect(docker_observable).to receive(:observe).once.and_yield(docker_state)
+
+        subject.run # once
+        subject.stop
+
+        expect(etcd_server).to be_modified
+        expect(etcd_server.logs).to eq [
+          [:set, '/kontena/test/test-1'],
+          [:delete, '/kontena/test/test-1'],
+        ]
+        expect(etcd_server.nodes).to eq({})
+      end
+    end
   end
 end

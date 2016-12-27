@@ -59,6 +59,19 @@ class Kontena::Registrator::Service
     self.update(@docker_observable.get)
   end
 
+  # Remove nodes from etcd, and terminate.
+  def stop
+    # XXX: is this safe against concurrent run, refresh?
+    #      poision just to be sure
+    @context = nil
+
+    # flush any nodes
+    @etcd_writer.clear
+
+    # XXX: must be higher priority over the other messages...
+    self.terminate
+  end
+
   # Apply @policy, and update etcd
   #
   # @param docker_state [Docker::State]
