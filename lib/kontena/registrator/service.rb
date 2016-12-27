@@ -23,6 +23,14 @@ class Kontena::Registrator::Service
     self.start if start
   end
 
+  def to_s
+    if @context.config
+      "#{@policy}:#{@context.config}"
+    else
+      "#{@policy}"
+    end
+  end
+
   # Start update+refresh loop
   def start
     refresh_interval = @etcd_writer.ttl / 2
