@@ -34,7 +34,7 @@ class Kontena::Registrator::Service
   # Start update+refresh loop
   def start
     refresh_interval = @etcd_writer.ttl / 2
-    logger.info "refreshing etcd every #{refresh_interval}s..."
+    logger.debug "refreshing etcd every #{refresh_interval}s..."
 
     self.async.run
 
@@ -61,14 +61,15 @@ class Kontena::Registrator::Service
 
   # Remove nodes from etcd, and terminate.
   def stop
-    # XXX: is this safe against concurrent run, refresh?
-    #      poision just to be sure
-    @context = nil
-
     # flush any nodes
     @etcd_writer.clear
 
+    # XXX: the @etcd_writer state is now off-limits, poision just to be sure
+    # XXX: assume this is safe against concurrent tasks
+    @etcd_writer = nil
+
     # XXX: must be higher priority over the other messages...
+    #      otherwise some pending update/refresh might trip over the cleared @etcd_writer
     self.terminate
   end
 
@@ -78,7 +79,7 @@ class Kontena::Registrator::Service
   def update(docker_state)
     etcd_nodes = @policy.apply(docker_state, @context)
 
-    logger.info "Update with Docker #containers=#{docker_state.containers.size} => etcd #nodes=#{etcd_nodes.size}"
+    logger.debug "update with Docker::State#containers=#{docker_state.containers.size} => etcd #nodes=#{etcd_nodes.size}"
 
     @etcd_writer.update(etcd_nodes)
   end
@@ -96,6 +97,8 @@ class Kontena::Registrator::Service
   #
   # Runs concurrently with run -> update
   def refresh
+    logger.debug "refresh etcd..."
+
     @etcd_writer.refresh
   end
 end

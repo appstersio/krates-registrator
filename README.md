@@ -16,11 +16,19 @@ Use bundler to install gemfile deps:
 
 ## Usage
 
-Run with a Ruby policy:
+Run with a bundler:
 
-`bundle exec bin/kontena-registrator etc/services/skydns.rb`
+`KONTENA_REGISTRATOR_POLICIES=etc/policies/*.rb bundle exec bin/kontena-registrator`
+
+Run with Docker:
+
+`docker run --rm --name kontena-registrator --net host -v /var/run/docker.sock:/var/run/docker.sock -e LOG_LEVEL=info -e KONTENA_REGISTRATOR_POLICIES=etc/policies/*.rb kontena/registrator`
 
 ## Config
+
+### `KONTENA_REGISTRATOR_POLICIES=etc/policies/*.rb`
+
+Load policies for configuration.
 
 ### `LOG_LEVEL=...`
 
@@ -33,3 +41,7 @@ Run with a Ruby policy:
 ### `ETCD_ENDPOINT=http://127.0.0.1:2379`
 
 Connect to etcd
+
+## Build
+
+`docker build -t kontena/registrator .`

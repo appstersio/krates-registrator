@@ -67,6 +67,7 @@ module Kontena::Registrator::Docker
     #
     # @param [String] id
     # @param [Hash, Nil] json
+    # @return [Kontena::Registrator::Docker::Container]
     def container!(id, json)
       if json
         #pp(json)
@@ -114,6 +115,7 @@ module Kontena::Registrator::Docker
     # Synchronize container state from Docker
     #
     # @param id [String] Docker::Container ID
+    # @return [Kontena::Registrator::Docker::Container]
     def sync_container(id)
       @state.container! id, Docker::Container.get(id).info
     rescue Docker::Error::NotFoundError
@@ -143,11 +145,16 @@ module Kontena::Registrator::Docker
 
         if event.type == 'container' && event.action == 'destroy'
           # the container is gone, no point trying to sync it
-          @state.container! event.id, nil
+          container = @state.container! event.id, nil
+
+          logger.info "destroy container #{event.id}: #{container}"
 
         elsif event.type == 'container'
           # sync container from Docker::Event
-          sync_container event.id
+          container = sync_container event.id
+
+          logger.info "#{event.action} container #{event.id}: #{container}"
+
         else
           # ignore
           next

@@ -121,6 +121,7 @@ class Kontena::Registrator::Manager
 
       self.create(policy, config)
     else
+      # XXX: do not warn if removed service
       logger.warn "exit actor=#{actor.inspect} for unknown service: #{reason.inspect}"
     end
   end
@@ -139,12 +140,12 @@ class Kontena::Registrator::Manager
   # @param config [nil, Kontena::Registrator::Policy::Config]
   # @raise [ServiceError]
   def create(policy, config = nil)
+    logger.info "create policy=#{policy} with config=#{config}: #{config.to_json}"
+
     begin
       service = @class.new(policy, config, **@opts)
     rescue => error
       raise ServiceError, "initialize policy=#{policy} config=#{config}: #{error}"
-    else
-      logger.info "create policy=#{policy} with config=#{config}: #{service}"
     end
 
     @state[policy, config] = service
