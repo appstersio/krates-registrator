@@ -30,12 +30,25 @@ describe Kontena::Registrator::Manager, :celluloid => true do
 
     it "Creates a single configurationless Service" do
       expect(configuration_observable).to receive(:observe).once.and_yield(config_state)
+      expect(subject.wrapped_object).to receive(:create).once.with(policy, nil).and_call_original
       expect(Kontena::Registrator::Service).to receive(:new_link).and_return(service)
-      #expect(subject).to receive(:create).with(policy, nil).and_call_original
+
+      subject.run
+
+      expect(subject.status(policy, nil)).to be service
+    end
+
+    it "Does not reload a configurationless Service" do
+      expect(configuration_observable).to receive(:observe).once.and_yield(config_state).and_yield(config_state)
+      expect(subject.wrapped_object).to receive(:create).once.with(policy, nil).and_call_original
+      expect(Kontena::Registrator::Service).to receive(:new_link).and_return(service)
+      expect(subject.wrapped_object).to_not receive(:reload)
 
       subject.run
 
       expect(subject.status(policy, nil)).to be service
     end
   end
+
+
 end

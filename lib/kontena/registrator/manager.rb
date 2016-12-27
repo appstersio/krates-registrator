@@ -28,10 +28,10 @@ class Kontena::Registrator::Manager
     config_state.each do |policy, config|
       logger.debug "apply policy=#{policy} with config=#{config.to_s}: #{config.to_json}"
 
-      if self[policy, config]
-        self.reload(policy, config)
-      else
+      if self[policy, config].nil?
         self.create(policy, config)
+      elsif config
+        self.reload(policy, config)
       end
     end
 
