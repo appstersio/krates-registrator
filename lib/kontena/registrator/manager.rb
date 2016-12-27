@@ -16,6 +16,8 @@ class Kontena::Registrator::Manager
   end
 
   def start
+    logger.debug "start..."
+
     self.async.run
   end
 
@@ -35,7 +37,7 @@ class Kontena::Registrator::Manager
 
     # sync down services
     self.each do |policy, config_key|
-      unless config_state[policy, config_key]
+      unless config_state.include? policy, config_key
         self.remove(policy, config_key)
       end
     end
@@ -86,7 +88,7 @@ class Kontena::Registrator::Manager
     # XXX: rescue initialize errors?
     service = Kontena::Registrator::Service.new_link policy, config, **@service_opts
 
-    logger.info "start #{policy.name} with config=#{config}: #{service}"
+    logger.info "create policy=#{policy} with config=#{config}: #{service}"
 
     @services[[policy, config_key]] = service
   end
@@ -98,7 +100,7 @@ class Kontena::Registrator::Manager
   def reload(policy, config = nil)
     service = self[policy, config]
 
-    logger.info "reload #{policy.name} with config=#{config}: #{config.to_json}"
+    logger.info "reload policy=#{policy} with config=#{config}: #{config.to_json}"
 
     # XXX: guard against service actor crashes while reloading?
     service.reload config
@@ -111,9 +113,10 @@ class Kontena::Registrator::Manager
   def remove(policy, config_path = nil)
     service = @services[[policy, config_path]]
 
-    logger.info "stop #{policy.name} with config=#{config_path}: #{supervisor}"
+    logger.info "remove policy=#{policy} with config=#{config_path}: #{service}"
 
     # XXX TODO: service.remove
+    fail
   end
 
 end
