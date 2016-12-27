@@ -7,10 +7,11 @@ class Kontena::Registrator::Manager
   include Celluloid
   include Kontena::Logging
 
-  def initialize(configuration_observable, services, service_opts, start: true)
+  def initialize(configuration_observable, services, service_class, service_opts = { }, start: true)
     @configuration_observable = configuration_observable
     @services = services
-    @service_opts = service_opts
+    @class = service_class
+    @opts = service_opts
 
     self.start if start
   end
@@ -88,7 +89,7 @@ class Kontena::Registrator::Manager
     config_key = config ? config.to_s : nil
 
     # XXX: rescue initialize errors?
-    service = Kontena::Registrator::Service.new_link policy, config, **@service_opts
+    service = @class.new(policy, config, **@opts)
 
     logger.info "create policy=#{policy} with config=#{config}: #{service}"
 

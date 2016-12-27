@@ -37,7 +37,7 @@ module Kontena
       supervise type: Configuration, as: :configuration, args: [@configuration_observable, @policies]
 
       # Manges services from configuration
-      supervise type: Manager, as: :manager, args: [@configuration_observable, @services, {docker_observable: @docker_observable}]
+      supervise type: Manager, as: :manager, args: [@configuration_observable, @services, Kontena::Registrator::Service, {docker_observable: @docker_observable}, { }]
 
       # Updates the global Docker::Actor.observable
       supervise type: Docker::Actor, as: :docker, args: [@docker_observable]
