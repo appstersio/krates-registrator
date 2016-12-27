@@ -1,6 +1,6 @@
 describe Kontena::Registrator::Manager, :celluloid => true do
   let :policy do
-    instance_double(Kontena::Registrator::Policy,
+    instance_double(Kontena::Registrator::Policy, :policy,
       name: 'mock',
       to_s: 'mock',
     )
@@ -52,34 +52,94 @@ describe Kontena::Registrator::Manager, :celluloid => true do
   end
 
   context "For a single configurable policy" do
-    let :config do
-      instance_double(Kontena::Registrator::Policy::Config,
-        to_s: 'test',
+    let :config1 do
+      instance_double(Kontena::Registrator::Policy::Config, :config1_v1,
+        to_s: 'test1',
+      )
+    end
+    let :config1_v2 do
+      instance_double(Kontena::Registrator::Policy::Config, :config1_v2,
+        to_s: 'test1',
+      )
+    end
+    let :config2 do
+      instance_double(Kontena::Registrator::Policy::Config, :config2,
+        to_s: 'test2',
       )
     end
 
-    let :config_state do
-      Kontena::Registrator::Configuration::State.new(
-        policy => {
-          'test' => config,
-        },
-      )
+    let :service1 do
+      instance_double(Kontena::Registrator::Service, :service1)
     end
-
-    let :service do
-      instance_double(Kontena::Registrator::Service)
+    let :service2 do
+      instance_double(Kontena::Registrator::Service, :service2)
     end
 
     it "Creates a single configured Service" do
-      expect(configuration_observable).to receive(:observe).once.and_yield(config_state)
-      expect(subject.wrapped_object).to receive(:create).once.with(policy, config).and_call_original
-      expect(Kontena::Registrator::Service).to receive(:new_link).with(policy, config, docker_observable: docker_observable).and_return(service)
+      expect(configuration_observable).to receive(:observe).once
+        .and_yield(Kontena::Registrator::Configuration::State.new(
+          policy => {
+            'test1' => config1,
+          },
+        ))
+
+      expect(subject.wrapped_object).to receive(:create).once.with(policy, config1).and_call_original
+      expect(Kontena::Registrator::Service).to receive(:new_link).with(policy, config1, docker_observable: docker_observable).and_return(service1)
 
       subject.run
 
-      expect(subject.status(policy, 'test')).to be service
+      expect(subject.status(policy, 'test1')).to be service1
+    end
+
+    it "Creates and reloads a single configured Service" do
+      expect(configuration_observable).to receive(:observe).once
+        .and_yield(Kontena::Registrator::Configuration::State.new(
+          policy => {
+            'test1' => config1,
+          },
+        ))
+        .and_yield(Kontena::Registrator::Configuration::State.new(
+          policy => {
+            'test1' => config1_v2,
+          },
+        ))
+
+      expect(subject.wrapped_object).to receive(:create).once.with(policy, config1).and_call_original
+      expect(Kontena::Registrator::Service).to receive(:new_link).with(policy, config1, docker_observable: docker_observable).and_return(service1)
+
+      expect(subject.wrapped_object).to receive(:reload).once.with(policy, config1_v2).and_call_original
+      expect(service1).to receive(:reload).with(config1_v2)
+
+      subject.run
+
+      expect(subject.status(policy, 'test1')).to be service1
+    end
+
+    it "Creates a single configured Service, and then creates a second one" do
+      expect(configuration_observable).to receive(:observe).once
+        .and_yield(Kontena::Registrator::Configuration::State.new(
+          policy => {
+            'test1' => config1,
+          },
+        ))
+        .and_yield(Kontena::Registrator::Configuration::State.new(
+          policy => {
+            'test1' => config1,
+            'test2' => config2,
+          },
+        ))
+
+      expect(subject.wrapped_object).to receive(:create).once.with(policy, config1).and_call_original
+      expect(Kontena::Registrator::Service).to receive(:new_link).with(policy, config1, docker_observable: docker_observable).and_return(service1)
+
+      expect(service1).to receive(:reload).with(config1) # config remains the same
+      expect(subject.wrapped_object).to receive(:create).once.with(policy, config2).and_call_original
+      expect(Kontena::Registrator::Service).to receive(:new_link).with(policy, config2, docker_observable: docker_observable).and_return(service2)
+
+      subject.run
+
+      expect(subject.status(policy, 'test1')).to be service1
+      expect(subject.status(policy, 'test2')).to be service2
     end
   end
-
-
 end

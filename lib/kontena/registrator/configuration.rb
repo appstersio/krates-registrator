@@ -25,6 +25,8 @@ class Kontena::Registrator::Configuration
       state
     end
 
+    include Enumerable
+
     # @yield [policy, config]
     # @yieldparam policy [Kontena::Registrator::Policy]
     # @yieldparam config [nil, Object]
