@@ -47,6 +47,7 @@ class Kontena::Registrator::Service
     # replace the policy ApplyContext
     @context = @policy.apply_context(config)
 
+    # immediately re-apply current Docker state to update any changes to etcd
     self.update(@docker_observable.get)
   end
 
