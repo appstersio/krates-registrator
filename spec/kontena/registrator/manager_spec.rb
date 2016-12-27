@@ -2,6 +2,7 @@ describe Kontena::Registrator::Manager, :celluloid => true do
   let :policy do
     instance_double(Kontena::Registrator::Policy,
       name: 'mock',
+      to_s: 'mock',
     )
   end
 
@@ -47,6 +48,36 @@ describe Kontena::Registrator::Manager, :celluloid => true do
       subject.run
 
       expect(subject.status(policy, nil)).to be service
+    end
+  end
+
+  context "For a single configurable policy" do
+    let :config do
+      instance_double(Kontena::Registrator::Policy::Config,
+        to_s: 'test',
+      )
+    end
+
+    let :config_state do
+      Kontena::Registrator::Configuration::State.new(
+        policy => {
+          'test' => config,
+        },
+      )
+    end
+
+    let :service do
+      instance_double(Kontena::Registrator::Service)
+    end
+
+    it "Creates a single configured Service" do
+      expect(configuration_observable).to receive(:observe).once.and_yield(config_state)
+      expect(subject.wrapped_object).to receive(:create).once.with(policy, config).and_call_original
+      expect(Kontena::Registrator::Service).to receive(:new_link).with(policy, config, docker_observable: docker_observable).and_return(service)
+
+      subject.run
+
+      expect(subject.status(policy, 'test')).to be service
     end
   end
 

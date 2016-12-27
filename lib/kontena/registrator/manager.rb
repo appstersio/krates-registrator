@@ -63,8 +63,10 @@ class Kontena::Registrator::Manager
   end
 
   # @yield [policy, config_key]
+  # @yieldparam policy [Kontena::Registrator::Policy]
+  # @yieldparam config_key [String, nil]
   def each(&block)
-    @services.each do |key, supervisor|
+    @services.each do |key, service|
       policy, config_key = key
       yield policy, config_key
     end
