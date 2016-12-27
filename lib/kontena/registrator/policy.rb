@@ -16,6 +16,15 @@ class Kontena::Registrator::Policy
     policy
   end
 
+  class Config
+    include Kontena::Etcd::Model
+    include Kontena::JSON::Model
+
+    def to_s
+      "#{etcd_key}"
+    end
+  end
+
   attr_accessor :name, :context
 
   def initialize(name)
@@ -43,15 +52,8 @@ class Kontena::Registrator::Policy
 
     # Declare a Kontena::Etcd::Model used to configure policy services
     def config(&block)
-      @config = Class.new do
-        include Kontena::Etcd::Model
-        include Kontena::JSON::Model
-
-        def to_s
-          "#{etcd_key}"
-        end
-      end
-
+      # policy-specific config class
+      @config = Class.new(Config)
       @config.instance_eval(&block)
     end
 
@@ -73,9 +75,9 @@ class Kontena::Registrator::Policy
     return @context[:config] != nil
   end
 
-  # Return any configuration model class that this policy has
+  # Return any Config class that this policy has
   #
-  # @return [nil, Class<Kontena::Etcd::Model>]
+  # @return [nil, Class<Config>]
   def config_model
     return @context[:config]
   end
@@ -104,6 +106,7 @@ class Kontena::Registrator::Policy
   # Compile a Docker::State into a set of etcd nodes
   #
   # @param state [Kontena::Registrator::Docker::State]
+  # @param context [ApplyContext]
   # @return [Hash<String, String>] nodes for Kontena::Etcd::Writer
   def apply(state, context)
     nodes = {}
@@ -115,12 +118,16 @@ class Kontena::Registrator::Policy
     nodes
   end
 
+  # @param config [Config]
+  # @return [ApplyContext]
   def apply_context(config = nil)
     ApplyContext.new(config)
   end
 
   # Apply-time evaluation context for DSL procs
   # One policy may have multiple Services, each with a different ApplyContext...
+  #
+  # @attr config [Config, nil] instance of Policy#config_model class
   class ApplyContext
     attr_reader :config
 

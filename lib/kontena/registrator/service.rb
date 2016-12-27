@@ -12,8 +12,9 @@ class Kontena::Registrator::Service
 
   # @param docker_observable [Kontena::Observable<Kontena::Registrator::Docker::State>]
   # @param policy [Kontena::Registrator::Policy]
+  # @param config [Kontena::Registrator::Policy::Config, nil] policy#config_model instance
   # @param start [Boolean] autostart when supervised, set to false for test cases
-  def initialize(docker_observable, policy, config, start: true)
+  def initialize(policy, config = nil, docker_observable: , start: true)
     @docker_observable = docker_observable
     @etcd_writer = Kontena::Etcd::Writer.new(ttl: ETCD_TTL)
     @policy = policy
@@ -35,15 +36,18 @@ class Kontena::Registrator::Service
     end
   end
 
-  # Update config while running
+  # Update config while running.
+  #
+  # The config should never be nil.
   #
   # This is different from a restart, in that it preserves the Etcd::Writer state
   #
-  # XXX: crash and restart loads the old config
+  # @param config [Kontena::Registrator::Policy::Config] policy#config_model instance
   def reload(config)
+    # replace the policy ApplyContext
     @context = @policy.apply_context(config)
 
-    # XXX: self.update(...)
+    self.update(@docker_observable.get)
   end
 
   # Apply @policy, and update etcd

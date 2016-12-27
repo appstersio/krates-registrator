@@ -12,7 +12,7 @@ describe Kontena::Registrator::Service do
   end
 
   subject do
-    described_class.new(docker_observable, policy, nil, start: false)
+    described_class.new(policy, nil, docker_observable: docker_observable, start: false)
   end
 
   before do
