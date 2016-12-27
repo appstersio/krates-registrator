@@ -4,8 +4,10 @@ require 'kontena/logging'
 
 # Start/stop services from configuration udpates
 class Kontena::Registrator::Manager
-  include Celluloid
   include Kontena::Logging
+  include Celluloid
+
+  trap_exit :actor_exit
 
   class ServiceError < StandardError
 
@@ -14,10 +16,18 @@ class Kontena::Registrator::Manager
   class State
     def initialize
       @services = { }
+      @configs = { }
     end
 
     def []=(policy, config, service)
       @services[[policy, config ? config.to_s : nil]] = service
+      @configs[service] = [policy, config]
+    end
+
+    # Update config in-place for restart
+    def update(policy, config)
+      service = self[policy, config_key]
+      @configs[service] = [policy, config]
     end
 
     # Get Service for policy, with optional config
@@ -43,7 +53,15 @@ class Kontena::Registrator::Manager
     # @param config_key [String, nil]
     # @return [Service, nil]
     def delete(policy, config_key = nil)
-      @services.delete([policy, config_key])
+      service = @services.delete([policy, config_key])
+      @configs.delete(service)
+
+      return service
+    end
+
+    # Reverse-lookup parameters for service
+    def find_service(service)
+      @configs[service]
     end
   end
 
@@ -95,6 +113,17 @@ class Kontena::Registrator::Manager
     end
   end
 
+  def actor_exit(actor, reason)
+    if params = @state.find_service(actor)
+      policy, config = params
+
+      logger.error "restart service=#{actor.inspect} with policy=#{policy} config=#{config}: #{reason.inspect}"
+
+      self.create(policy, config)
+    else
+      logger.warn "exit actor=#{actor.inspect} for unknown service: #{reason.inspect}"
+    end
+  end
 
   # Is the service running?
   #
@@ -119,6 +148,8 @@ class Kontena::Registrator::Manager
     end
 
     @state[policy, config] = service
+
+    self.link(service)
   end
 
   # Reload configuration for policy
@@ -136,6 +167,9 @@ class Kontena::Registrator::Manager
     rescue => error
       raise ServiceError, "reload: #{error}"
     end
+
+    # update config in state for restart
+    @state.update(policy, config)
 
     service
   end
