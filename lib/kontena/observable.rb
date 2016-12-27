@@ -16,6 +16,10 @@ module Kontena
     include Celluloid
     include Kontena::Logging
 
+    class Closed < StandardError
+
+    end
+
     # Initialize with a nil value.
     #
     # Any initial #observe will block until the first #update
@@ -31,7 +35,7 @@ module Kontena
     #
     # @param value the value to be yielded by #observe
     def update(value)
-      raise "Observable is closed" unless @active
+      raise Closed unless @active
 
       @value = value
       @index += 1
@@ -83,6 +87,18 @@ module Kontena
           return
         end
       end
+    end
+
+    # Return current value, blocking if no initial value.
+    #
+    # @return value
+    # @raise [Closed] if closed, no value to return
+    def get
+      observe do |value|
+        return value
+      end
+
+      raise Closed
     end
   end
 end
