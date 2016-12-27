@@ -8,11 +8,18 @@ module Kontena
     require 'kontena/registrator/docker'
     require 'kontena/registrator/policy'
     require 'kontena/registrator/service'
+    require 'kontena/registrator/configuration'
+    require 'kontena/registrator/manager'
 
     include Kontena::Logging
 
-    def initialize(**opts)
-      super(**opts)
+    def initialize(policy_globs: [])
+      super
+
+      @policies = Configuration.load_policies(*policy_globs)
+
+      # Persistent Manager state, preserved across Actor restarts
+      @services = { }
 
       # Shared Docker state, updated by the running Docker::Actor, used
       # by other Service actors.
@@ -23,19 +30,17 @@ module Kontena
       # Other Actors do not need to be restarted, they will pick up the refreshed state.
       @docker_observable = Kontena::Observable.new # Docker::State
 
+      # Configuration state
+      @configuration_observable = Kontena::Observable.new # Configuration::State
+
+      # Loads service configurations
+      supervise type: Configuration, as: :configuration, args: [@configuration_observable, @policies]
+
+      # Manges services from configuration
+      supervise type: Manager, as: :manager, args: [@configuration_observable, @services, {docker_observable: @docker_observable}]
+
       # Updates the global Docker::Actor.observable
       supervise type: Docker::Actor, as: :docker, args: [@docker_observable]
-    end
-
-    # Supervise a new Service for the given Policy
-    #
-    # Uses the shard Docker::Actor.observable
-    #
-    # @param policy [Kontena::Registrator::Policy]
-    def register(policy)
-      supervisor = supervise type: Service, args: [@docker_observable, policy]
-
-      logger.info "register #{policy.name}: #{supervisor}"
     end
   end
 end

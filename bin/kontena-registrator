@@ -1,12 +1,11 @@
 #!/usr/bin/env ruby
 
 require 'celluloid/current'
+require 'kontena/etcd'
 require 'kontena/registrator'
 
-registrator = Kontena::Registrator.run!
+Kontena::Etcd::Model.etcd = Kontena::Etcd::Client.new
 
-ARGV.each do |path|
-  registrator.register(Kontena::Registrator::Policy.load(path))
-end
-
-sleep
+registrator = Kontena::Registrator.run(
+  policy_globs: ENV['KONTENA_REGISTRATOR_POLICIES'].split()
+)
