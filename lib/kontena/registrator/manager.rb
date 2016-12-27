@@ -7,6 +7,10 @@ class Kontena::Registrator::Manager
   include Celluloid
   include Kontena::Logging
 
+  class ServiceError < StandardError
+
+  end
+
   def initialize(configuration_observable, services, service_class, service_opts = { }, start: true)
     @configuration_observable = configuration_observable
     @services = services
@@ -29,10 +33,15 @@ class Kontena::Registrator::Manager
     config_state.each do |policy, config|
       logger.debug "apply policy=#{policy} with config=#{config.to_s}: #{config.to_json}"
 
-      if self[policy, config].nil?
-        self.create(policy, config)
-      elsif config
-        self.reload(policy, config)
+      begin
+        if self[policy, config].nil?
+          self.create(policy, config)
+        elsif config
+          self.reload(policy, config)
+        end
+      rescue ServiceError => error
+        # skip, omit from @services, and thus retry on next config update
+        logger.error error
       end
     end
 
@@ -85,13 +94,18 @@ class Kontena::Registrator::Manager
   #
   # @param policy [Kontena::Registrator::Policy]
   # @param config [nil, Kontena::Registrator::Policy::Config]
+  # @raise [ServiceError]
   def create(policy, config = nil)
     config_key = config ? config.to_s : nil
 
-    # XXX: rescue initialize errors?
-    service = @class.new(policy, config, **@opts)
+    begin
+      service = @class.new(policy, config, **@opts)
+    rescue => error
+      raise ServiceError, "initialize policy=#{policy} config=#{config}: #{error}"
+    else
+      logger.info "create policy=#{policy} with config=#{config}: #{service}"
+    end
 
-    logger.info "create policy=#{policy} with config=#{config}: #{service}"
 
     @services[[policy, config_key]] = service
   end
@@ -100,13 +114,19 @@ class Kontena::Registrator::Manager
   #
   # @param policy [Kontena::Registrator::Policy]
   # @param config [nil, Kontena::Etcd::Model]
+  # @raise [ServiceError]
   def reload(policy, config = nil)
     service = self[policy, config]
 
     logger.info "reload policy=#{policy} with config=#{config}: #{config.to_json}"
 
-    # XXX: guard against service actor crashes while reloading?
-    service.reload config
+    begin
+      service.reload config
+    rescue => error
+      raise ServiceError, "reload: #{error}"
+    end
+
+    service
   end
 
   # Stop and remove service for a given Policy and configuration path

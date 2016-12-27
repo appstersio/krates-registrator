@@ -130,16 +130,84 @@ describe Kontena::Registrator::Manager, :celluloid => true do
         ))
 
       expect(subject.wrapped_object).to receive(:create).once.with(policy, config1).and_call_original
-      expect(Kontena::Registrator::Service).to receive(:new_link).with(policy, config1, docker_observable: docker_observable).and_return(service1)
+      expect(Kontena::Registrator::Service).to receive(:new).with(policy, config1, docker_observable: docker_observable).and_return(service1)
 
       expect(service1).to receive(:reload).with(config1) # config remains the same
       expect(subject.wrapped_object).to receive(:create).once.with(policy, config2).and_call_original
-      expect(Kontena::Registrator::Service).to receive(:new_link).with(policy, config2, docker_observable: docker_observable).and_return(service2)
+      expect(Kontena::Registrator::Service).to receive(:new).with(policy, config2, docker_observable: docker_observable).and_return(service2)
 
       subject.run
 
       expect(subject.status(policy, 'test1')).to be service1
       expect(subject.status(policy, 'test2')).to be service2
+    end
+
+    it "Creates a single configured Service, and then replaces it with a second one" do
+      expect(configuration_observable).to receive(:observe).once
+        .and_yield(Kontena::Registrator::Configuration::State.new(
+          policy => {
+            'test1' => config1,
+          },
+        ))
+        .and_yield(Kontena::Registrator::Configuration::State.new(
+          policy => {
+            'test2' => config2,
+          },
+        ))
+
+      expect(subject.wrapped_object).to receive(:create).once.with(policy, config1).and_call_original
+      expect(Kontena::Registrator::Service).to receive(:new).with(policy, config1, docker_observable: docker_observable).and_return(service1)
+
+      expect(subject.wrapped_object).to receive(:create).once.with(policy, config2).and_call_original
+      expect(Kontena::Registrator::Service).to receive(:new).with(policy, config2, docker_observable: docker_observable).and_return(service2)
+      expect(subject.wrapped_object).to receive(:remove).once.with(policy, 'test1').and_call_original
+
+      subject.run
+
+      expect(subject.status(policy, 'test1')).to be nil
+      expect(subject.status(policy, 'test2')).to be service2
+    end
+  end
+
+  context "For a service that fails to intialize" do
+    let :service_class do
+      Class.new do
+        include Celluloid
+
+        def initialize(policy, config = nil, asdf: 'quux')
+          raise RuntimeError if config.to_s == 'test1'
+        end
+      end
+    end
+
+    subject do
+      described_class.new(configuration_observable, { }, service_class, start: false)
+    end
+
+    let :config1 do
+      instance_double(Kontena::Registrator::Policy::Config, :config1_v1,
+        to_s: 'test1',
+      )
+    end
+    let :config2 do
+      instance_double(Kontena::Registrator::Policy::Config, :config2,
+        to_s: 'test2',
+      )
+    end
+
+    it "Logs the error, and continues to start other services" do
+      expect(configuration_observable).to receive(:observe).once
+        .and_yield(Kontena::Registrator::Configuration::State.new(
+          policy => {
+            'test1' => config1,
+            'test2' => config2,
+          },
+        ))
+
+      subject.run
+
+      expect(subject.status(policy, 'test1')).to be_nil
+      expect(subject.status(policy, 'test2')).to_not be_nil
     end
   end
 end
