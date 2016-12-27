@@ -11,9 +11,45 @@ class Kontena::Registrator::Manager
 
   end
 
-  def initialize(configuration_observable, services, service_class, service_opts = { }, start: true)
+  class State
+    def initialize
+      @services = { }
+    end
+
+    def []=(policy, config, service)
+      @services[[policy, config ? config.to_s : nil]] = service
+    end
+
+    # Get Service for policy, with optional config
+    #
+    # @param policy [Kontena::Registrator::Policy]
+    # @param config policy configuration object
+    # @return [Service]
+    def [](policy, config = nil)
+      @services[[policy, config ? config.to_s : nil]]
+    end
+
+    # @yield [policy, config_key]
+    # @yieldparam policy [Kontena::Registrator::Policy]
+    # @yieldparam config_key [String, nil]
+    def each(&block)
+      @services.each do |key, service|
+        policy, config_key = key
+        yield policy, config_key
+      end
+    end
+
+    # @param policy [Kontena::Registrator::Policy]
+    # @param config_key [String, nil]
+    # @return [Service, nil]
+    def delete(policy, config_key = nil)
+      @services.delete([policy, config_key])
+    end
+  end
+
+  def initialize(configuration_observable, state, service_class, service_opts = { }, start: true)
     @configuration_observable = configuration_observable
-    @services = services
+    @state = state
     @class = service_class
     @opts = service_opts
 
@@ -34,7 +70,7 @@ class Kontena::Registrator::Manager
       logger.debug "apply policy=#{policy} with config=#{config.to_s}: #{config.to_json}"
 
       begin
-        if self[policy, config].nil?
+        if @state[policy, config].nil?
           self.create(policy, config)
         elsif config
           self.reload(policy, config)
@@ -46,7 +82,7 @@ class Kontena::Registrator::Manager
     end
 
     # sync down services
-    self.each do |policy, config_key|
+    @state.each do |policy, config_key|
       unless config_state.include? policy, config_key
         self.remove(policy, config_key)
       end
@@ -59,35 +95,13 @@ class Kontena::Registrator::Manager
     end
   end
 
-  # Manager API
-
-  # TODO: trap_exit
-
-  # Get Service for policy, with optional config
-  #
-  # @param policy [Kontena::Registrator::Policy]
-  # @param config policy configuration object
-  # @return [Service]
-  def [](policy, config = nil)
-    @services[[policy, config ? config.to_s : nil]]
-  end
-
-  # @yield [policy, config_key]
-  # @yieldparam policy [Kontena::Registrator::Policy]
-  # @yieldparam config_key [String, nil]
-  def each(&block)
-    @services.each do |key, service|
-      policy, config_key = key
-      yield policy, config_key
-    end
-  end
 
   # Is the service running?
   #
   # @param policy [Kontena::Registrator::Policy]
   # @param config [nil, Kontena::Registrator::Policy::Config]
   def status(policy, config = nil)
-    self[policy, config]
+    @state[policy, config]
   end
 
   # Supervise a new Service for the given Policy and optional configuration
@@ -96,8 +110,6 @@ class Kontena::Registrator::Manager
   # @param config [nil, Kontena::Registrator::Policy::Config]
   # @raise [ServiceError]
   def create(policy, config = nil)
-    config_key = config ? config.to_s : nil
-
     begin
       service = @class.new(policy, config, **@opts)
     rescue => error
@@ -106,7 +118,7 @@ class Kontena::Registrator::Manager
       logger.info "create policy=#{policy} with config=#{config}: #{service}"
     end
 
-    @services[[policy, config_key]] = service
+    @state[policy, config] = service
   end
 
   # Reload configuration for policy
@@ -115,7 +127,7 @@ class Kontena::Registrator::Manager
   # @param config [nil, Kontena::Etcd::Model]
   # @raise [ServiceError]
   def reload(policy, config = nil)
-    service = self[policy, config]
+    service = @state[policy, config]
 
     logger.info "reload policy=#{policy} with config=#{config}: #{config.to_json}"
 
@@ -133,7 +145,7 @@ class Kontena::Registrator::Manager
   # @param policy [Kontena::Registrator::Policy]
   # @param config_path [nil, String]
   def remove(policy, config_path = nil)
-    service = @services[[policy, config_path]]
+    service = @state.delete(policy, config_path)
 
     logger.info "remove policy=#{policy} with config=#{config_path}: #{service}"
 
@@ -141,8 +153,6 @@ class Kontena::Registrator::Manager
       service.stop
     rescue => error
       raise ServiceError, "stop: #{error}"
-    ensure
-      @services.delete([policy, config_path])
     end
   end
 end

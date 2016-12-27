@@ -1,4 +1,8 @@
 describe Kontena::Registrator::Manager, :celluloid => true do
+  let :state do
+    Kontena::Registrator::Manager::State.new
+  end
+
   let :policy do
     instance_double(Kontena::Registrator::Policy, :policy,
       name: 'mock',
@@ -15,7 +19,7 @@ describe Kontena::Registrator::Manager, :celluloid => true do
   end
 
   subject do
-    described_class.new(configuration_observable, { }, Kontena::Registrator::Service, { docker_observable: docker_observable }, start: false)
+    described_class.new(configuration_observable, state, Kontena::Registrator::Service, { docker_observable: docker_observable }, start: false)
   end
 
   context "For a configurationless policy" do
@@ -182,7 +186,7 @@ describe Kontena::Registrator::Manager, :celluloid => true do
     end
 
     subject do
-      described_class.new(configuration_observable, { }, service_class, start: false)
+      described_class.new(configuration_observable, state, service_class, start: false)
     end
 
     let :config1 do
