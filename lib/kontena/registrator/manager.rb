@@ -26,7 +26,7 @@ class Kontena::Registrator::Manager
 
     # Update config in-place for restart
     def update(policy, config)
-      service = self[policy, config_key]
+      service = self[policy, config]
       @configs[service] = [policy, config]
     end
 
