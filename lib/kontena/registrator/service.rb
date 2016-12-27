@@ -38,6 +38,8 @@ class Kontena::Registrator::Service
   # Update config while running
   #
   # This is different from a restart, in that it preserves the Etcd::Writer state
+  #
+  # XXX: crash and restart loads the old config
   def reload(config)
     @context = @policy.apply_context(config)
 
