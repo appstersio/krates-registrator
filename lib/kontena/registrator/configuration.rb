@@ -40,15 +40,30 @@ class Kontena::Registrator::Configuration
       end
     end
 
-    # @yieldparam policy [Kontena::Registrator::Policy]
-    # @yieldparam config_key [nil, String]
+    # @param policy [Kontena::Registrator::Policy]
+    # @param config_key [nil, String]
+    # @return [Boolean]
+    def include?(policy, config_key = nil)
+      return false unless @policy_configs.key? policy
+
+      configs = @policy_configs[policy]
+
+      # XXX: playing around with nils is dangerous
+      return true if config_key.nil? && configs.nil?
+      return true if config_key && configs && configs.key?(config_key)
+      return nil
+    end
+
+    # @param policy [Kontena::Registrator::Policy]
+    # @param config_key [nil, String]
+    # @return [Kontena::Registrator::Policy::Config, nil]
     def [](policy, config_key = nil)
-      if configs = @policy_configs[policy]
-        if configs.nil? && config_key.nil?
-          configs
-        else
-          configs[config_key]
-        end
+      configs = @policy_configs[policy]
+
+      if configs.nil? && config_key.nil?
+        configs
+      else
+        configs[config_key]
       end
     end
   end
@@ -88,6 +103,7 @@ class Kontena::Registrator::Configuration
     logger.debug "configure policy=#{policy}..."
 
     # XXX: this operation will block the Actor on the etcd watch
+    # TODO: trap invalid configuration errors?
     policy.config_model.watch do |configs|
       logger.debug "configure policy=#{policy} with #configs=#{configs.size}"
 
