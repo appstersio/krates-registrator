@@ -10,7 +10,7 @@ source 'https://rubygems.org' do
   group :test do
     gem 'rspec', '~> 3.5'
 
-    # XXX: transitive development dependencies from kontan-etcd
+    # XXX: transitive development dependencies from kontena-etcd
     gem 'rack-test'
     gem 'sinatra'
     gem 'webmock'
