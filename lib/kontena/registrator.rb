@@ -34,7 +34,7 @@ module Kontena
       @configuration_observable = Kontena::Observable.new # Configuration::State
 
       # Loads service configurations
-      supervise type: Configuration, as: :configuration, args: [@configuration_observable, @policies]
+      supervise type: Configuration::Configurator, as: :configuration, args: [@configuration_observable, @policies]
 
       # Manges services from configuration
       supervise type: Manager, as: :manager, args: [@configuration_observable, @manager_state, Kontena::Registrator::Service, {docker_observable: @docker_observable}, { }]

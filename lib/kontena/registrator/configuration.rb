@@ -4,7 +4,7 @@ require 'kontena/logging'
 require 'kontena/etcd'
 
 # Configure dynamic Services from local Policy classes + etcd configurations
-class Kontena::Registrator::Configuration
+module Kontena::Registrator::Configuration
   class State
     def initialize(policy_configs = { })
       @policy_configs = policy_configs
@@ -70,52 +70,82 @@ class Kontena::Registrator::Configuration
     end
   end
 
-  include Celluloid
-  include Kontena::Logging
-
   # Load configuration policies from filesystem path
   def self.load_policies(*globs)
     paths = globs.map{|glob| Dir.glob(glob)}.flatten
     policies = paths.map{|path| Kontena::Registrator::Policy.load(path)}
-    policies = Hash[policies.map { |policy| [policy.name, policy] }]
   end
 
-  # @param policies [Hash{String => Policy}]
-  def initialize(observable, policies, start: true)
-    @observable = observable
-    @policies = policies
-    @state = State.new
+  # Aggregate configuration state from PolicyConfigurator
+  class Configurator
+    include Celluloid
+    include Kontena::Logging
 
-    logger.debug "initialize with policies=#{@policies.keys}"
+    # @param policies [Array<Policy>]
+    def initialize(observable, policies, start: true)
+      @observable = observable
+      @policies = policies
+      @state = State.new
 
-    self.start if start
-  end
+      logger.debug "initialize with policies=#{@policies}"
 
-  def start
-    @policies.each do |name, policy|
-      if policy.config?
-        self.async.run_policy(policy)
-      else
-        self.apply_policy(policy)
+      self.start if start
+    end
+
+    def start
+      @policies.each do |policy|
+        if policy.config?
+          self.start_policy(policy)
+        else
+          # apply directly without configuration
+          self.apply_policy(policy)
+        end
       end
     end
-  end
 
-  def run_policy(policy)
-    logger.info "configure policy=#{policy} from #{policy.config_model.etcd_schema}"
+    def start_policy(policy)
+      # start a new PolicyConfigurator, which sends us apply_policy
+      PolicyConfigurator.supervise args: [policy, Actor.current, :apply_policy]
+    end
 
-    # XXX: this operation will block the Actor on the etcd watch
-    # TODO: trap invalid configuration errors?
-    policy.config_model.watch do |configs|
-      logger.debug "configure policy=#{policy} with #configs=#{configs.size}"
+    # Called by PolicyConfigurator
+    #
+    # @param policy [Kontena::Registrator::Policy]
+    # @param configs [nil, Kontena::Registrator::Policy::Config]
+    def apply_policy(policy, configs = nil)
+      @state.update! policy, configs
 
-      apply_policy(policy, configs.to_h)
+      logger.debug "update with policy=#{policy}: #{configs}"
+
+      @observable.update @state.export
     end
   end
 
-  def apply_policy(policy, configs = nil)
-    @state.update! policy, configs
+  class PolicyConfigurator
+    include Celluloid
+    include Kontena::Logging
 
-    @observable.update @state.export
+    def initialize(policy, configurator, message, start: true)
+      @policy = policy
+      @configurator = configurator
+      @message = message
+
+      self.start if start
+    end
+
+    def start
+      self.async.run
+    end
+
+    def run
+      logger.info "configure policy=#{@policy} from #{@policy.config_model.etcd_schema}"
+
+      # TODO: trap invalid configuration errors?
+      @policy.config_model.watch do |configs|
+        logger.debug "configure policy=#{@policy} with #configs=#{configs.size}"
+
+        @configurator.sync @message, @policy, configs.to_h
+      end
+    end
   end
 end
