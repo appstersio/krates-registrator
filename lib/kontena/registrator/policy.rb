@@ -134,6 +134,8 @@ class Kontena::Registrator::Policy
     def initialize(config = nil)
       @config = config
       @config.freeze
+
+      self.freeze
     end
   end
 end
