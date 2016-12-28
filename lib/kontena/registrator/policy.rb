@@ -112,7 +112,16 @@ class Kontena::Registrator::Policy
     nodes = {}
 
     state.containers.each do |container|
-      nodes.merge! apply_nodes context.instance_exec(container, &@context[:docker_container])
+      container_nodes = apply_nodes(context.instance_exec(container, &@context[:docker_container]))
+
+      logger.debug "apply container=#{container}: #{container_nodes}"
+
+      nodes.merge!(container_nodes) do |key, old, new|
+        logger.warn "Overlapping etcd=#{key} node for container=#{container}: #{old.inspect} -> #{new.inspect}"
+
+        # Choose one node deterministically until the overlapping container goes away...
+        [old, new].min
+      end
     end
 
     nodes

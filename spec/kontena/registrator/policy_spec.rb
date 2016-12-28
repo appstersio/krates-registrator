@@ -26,6 +26,33 @@ describe Kontena::Registrator::Policy do
     end
   end
 
+  context "for a policy that produces overlapping nodes", :docker => true do
+    subject do
+      policy = described_class.new(:skydns)
+      policy.context.docker_container -> (container) {
+        {
+          "/kontena/test" => { hostname: container.hostname },
+        }
+      }
+      policy
+    end
+
+    let :docker_state do
+      docker_state_fixture('test-1', 'test-2')
+    end
+
+    let :apply_context do
+      subject.apply_context()
+    end
+
+    it "returns the smaller of the two nodes" do
+      expect(subject.logger).to receive(:warn)
+      expect(subject.apply(docker_state, apply_context)).to eq(
+        '/kontena/test' => '{"hostname":"test-1"}',
+      )
+    end
+  end
+
   context "for a configurable SkyDNS policy", :docker => true do
     subject do
       policy = described_class.new(:skydns)
