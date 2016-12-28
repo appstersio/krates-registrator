@@ -10,13 +10,14 @@ require 'kontena/observable'
 module Kontena::Registrator::Docker
   # Immutable container state
   class Container
-    attr_accessor :id
+    attr_accessor :id, :json
 
     def initialize(id, json)
       @id = id
       @json = json
 
       self.freeze
+      self.json.freeze # TODO: deepfreeze
     end
 
     def to_s
