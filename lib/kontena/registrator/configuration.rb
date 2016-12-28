@@ -102,7 +102,7 @@ class Kontena::Registrator::Configuration
   end
 
   def run_policy(policy)
-    logger.debug "configure policy=#{policy}..."
+    logger.info "configure policy=#{policy} from #{policy.config_model.etcd_schema}"
 
     # XXX: this operation will block the Actor on the etcd watch
     # TODO: trap invalid configuration errors?

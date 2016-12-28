@@ -134,6 +134,8 @@ module Kontena::Registrator::Docker
         sync_container container.id
       end
 
+      logger.info "synchronized state"
+
       update!
     end
 
