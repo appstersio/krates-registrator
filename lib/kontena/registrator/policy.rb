@@ -31,8 +31,8 @@ class Kontena::Registrator::Policy
   end
 
   class Config
-    include Kontena::Etcd::Model
     include Kontena::JSON::Model
+    include Kontena::Etcd::Model
 
     def to_s
       "#{etcd_key}"
