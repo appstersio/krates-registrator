@@ -99,4 +99,42 @@ describe Kontena::Registrator::Policy do
       )
     end
   end
+
+  describe '#load' do
+    context "For a test policy", :fixtures => true, :docker => true do
+      let :docker_state do
+        docker_state_fixture('test-1', 'test-2')
+      end
+
+      let :apply_context do
+        subject.apply_context()
+      end
+
+      subject do
+        described_class.load(fixture_path(:policy, 'test.rb'))
+      end
+
+      it "Loads a policy .rb file" do
+        expect(subject.name).to eq 'test'
+        expect(subject).to_not be_config
+      end
+
+      it "returns etcd nodes for two containers" do
+        expect(subject.apply(docker_state, apply_context)).to eq(
+          '/skydns/local/skydns/test-1' => '{"host":"172.18.0.2"}',
+          '/skydns/local/skydns/test-2' => '{"host":"172.18.0.3"}',
+        )
+      end
+    end
+  end
+
+  describe '#loads' do
+    context "For a test policy", :fixtures => true do
+      it "Loads each policy .rb file" do
+        subjects = described_class.loads(fixture_path(:policy))
+
+        expect(subjects.map{|policy| policy.name}).to eq ['test']
+      end
+    end
+  end
 end

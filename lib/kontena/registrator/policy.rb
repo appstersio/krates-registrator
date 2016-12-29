@@ -4,7 +4,19 @@ require 'kontena/logging'
 class Kontena::Registrator::Policy
   include Kontena::Logging
 
+  # Load configuration policies from filesystem path
+  #
+  # @param path [String] local filesystem path to dir containining *.rb files
+  # @return [Array<Kontena::Registrator::Policy>]
+  def self.loads(path)
+    paths = Dir.glob("#{path}/*.rb")
+    policies = paths.map{|path| self.load(path)}
+  end
+
+  # Load policy from local filesystem path
+  #
   # @param path [String] filesystem path to .rb file
+  # @return [Kontena::Registrator::Policy]
   def self.load(path)
     name = File.basename(path, '.*')
     policy = new(name)
@@ -12,6 +24,8 @@ class Kontena::Registrator::Policy
     File.open(path, "r") do |file|
       policy.load(file)
     end
+
+    policy.logger.info "Load policy=#{name} from path=#{path}"
 
     policy
   end
