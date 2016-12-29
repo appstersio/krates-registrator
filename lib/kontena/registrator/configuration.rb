@@ -16,6 +16,7 @@ module Kontena::Registrator::Configuration
       @policy_configs[policy] = configs
     end
 
+    # Clone and freeze
     def export
       policy_configs = @policy_configs.clone
       policy_configs.freeze
@@ -70,13 +71,62 @@ module Kontena::Registrator::Configuration
     end
   end
 
-  # Load configuration policies from filesystem path
-  def self.load_policies(*globs)
-    paths = globs.map{|glob| Dir.glob(glob)}.flatten
-    policies = paths.map{|path| Kontena::Registrator::Policy.load(path)}
+  # Load local policy service configurations from local filesystem
+  class Local
+    include Kontena::Logging
+
+    def initialize(observable, policies)
+      @observable = observable
+      @policies = policies
+      @state = State.new
+    end
+
+    # Load configurations for policy from filesystem path
+    #
+    # @param policy [Kontena::Registrator::Policy]
+    # @return [Array<Kontena::Registrator::Policy::Config>]
+    def load_policy(path, policy)
+      path = File.join(path, policy.name)
+      paths = Dir.glob("#{path}/*.json")
+
+      paths.map { |path|
+        name = File.basename(path, ".json")
+
+        config = policy.config_model.new(name)
+
+        File.open(path) do |file|
+          # TODO: error with file path
+          config.from_json! file.read
+        end
+
+        config.freeze
+
+        logger.info "load policy=#{policy} config=#{name} from path=#{path}: #{config.to_json}"
+
+        config
+      }
+    end
+
+    # Load policy configs from path to @state and update observable
+    #
+    # @param path [String] local filesystem path to dir containing :policy/:service.json files
+    def load(path)
+      @policies.each do |policy|
+        if policy.config?
+          @state.update! policy, Hash[self.load_policy(path, policy).map{|config| [config.to_s, config]}]
+        else
+          logger.info "load policy=#{policy} without config"
+
+          @state.update! policy, nil
+        end
+      end
+
+      # fake it
+      @observable.update(@state.export)
+    end
   end
 
-  # Aggregate configuration state from PolicyConfigurator
+  # Aggregate configuration state from dynamic PolicyConfigurator configs
   class Configurator
     include Celluloid
     include Kontena::Logging
@@ -95,12 +145,15 @@ module Kontena::Registrator::Configuration
     def start
       @policies.each do |policy|
         if policy.config?
+          # dynamic configurable policy
           self.start_policy(policy)
         else
-          # apply directly without configuration
+          # static configurationless policy
           self.apply_policy(policy)
         end
       end
+
+      self.update!
     end
 
     def start_policy(policy)
@@ -117,6 +170,10 @@ module Kontena::Registrator::Configuration
 
       logger.debug "update with policy=#{policy}: #{configs}"
 
+      update!
+    end
+
+    def update!
       @observable.update @state.export
     end
   end

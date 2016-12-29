@@ -55,3 +55,37 @@ describe Kontena::Registrator::Configuration::State do
     end
   end
 end
+
+describe Kontena::Registrator::Configuration::Local do
+  context "For a single policy without configuration", :fixtures => true do
+    let :test_policy do
+      Kontena::Registrator::Policy.load(fixture_path(:policy, 'test.rb'))
+    end
+    let :skydns_policy do
+      Kontena::Registrator::Policy.load(fixture_path(:policy, 'skydns.rb'))
+    end
+
+    let :policies do
+      [test_policy, skydns_policy]
+    end
+
+    let :observable do
+      instance_double(Kontena::Observable)
+    end
+
+    subject do
+      described_class.new(observable, policies)
+    end
+
+    it "Loads both configurationless and configured policies" do
+      state = nil
+
+      expect(observable).to receive(:update) { |update_state| state = update_state }
+      subject.load(fixture_path(:services))
+
+      expect(state).to_not be_nil
+      expect(state.include? test_policy).to be_truthy
+      expect(state.include? skydns_policy, '/kontena/registrator/services/skydns/kontena-local').to be_truthy
+    end
+  end
+end
