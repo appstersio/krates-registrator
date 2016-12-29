@@ -37,19 +37,38 @@ describe Kontena::Registrator::Policy do
       policy
     end
 
-    let :docker_state do
-      docker_state_fixture('test-1', 'test-2')
+    context "for two different node values" do
+      let :docker_state do
+        docker_state_fixture('test-1', 'test-2')
+      end
+
+      let :apply_context do
+        subject.apply_context()
+      end
+
+      it "logs a warning and returns the smaller of the two nodes" do
+        expect(subject.logger).to receive(:warn)
+        expect(subject.apply(docker_state, apply_context)).to eq(
+          '/kontena/test' => '{"hostname":"test-1"}',
+        )
+      end
     end
 
-    let :apply_context do
-      subject.apply_context()
-    end
+    context "for two identical node values" do
+      let :docker_state do
+        docker_state_fixture('test-1', 'test-1')
+      end
 
-    it "returns the smaller of the two nodes" do
-      expect(subject.logger).to receive(:warn)
-      expect(subject.apply(docker_state, apply_context)).to eq(
-        '/kontena/test' => '{"hostname":"test-1"}',
-      )
+      let :apply_context do
+        subject.apply_context()
+      end
+
+      it "returns that node" do
+        expect(subject.logger).to_not receive(:warn)
+        expect(subject.apply(docker_state, apply_context)).to eq(
+          '/kontena/test' => '{"hostname":"test-1"}',
+        )
+      end
     end
   end
 

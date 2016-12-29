@@ -131,10 +131,14 @@ class Kontena::Registrator::Policy
       logger.debug "apply container=#{container}: #{container_nodes}"
 
       nodes.merge!(container_nodes) do |key, old, new|
-        logger.warn "Overlapping etcd=#{key} node for container=#{container}: #{old.inspect} -> #{new.inspect}"
+        if old == new
+          logger.debug "Merge etcd=#{key} node for container=#{container}: #{old.inspect}"
+        else
+          logger.warn "Overlapping etcd=#{key} node for container=#{container}: #{old.inspect} -> #{new.inspect}"
 
-        # Choose one node deterministically until the overlapping container goes away...
-        [old, new].min
+          # Choose one node deterministically until the overlapping container goes away...
+          [old, new].min
+        end
       end
     end
 
