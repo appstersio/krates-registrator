@@ -49,7 +49,7 @@ Run with Bundler:
 ### Docker
 Build with Docker:
 
-`docker build -t kontena/registrator .
+`docker build -t kontena/registrator .``
 
 Run with Docker:
 
@@ -65,6 +65,8 @@ Load `*.rb` policy files.
 
 Load local `:policy/*.json` service configuration for policies.
 
+XXX: assumes an etcd model schema of the form `etcd_path '.../:name'`, with a single symbol.
+
 ### `LOG_LEVEL=...`
 
 * `debug`
@@ -75,7 +77,7 @@ Load local `:policy/*.json` service configuration for policies.
 
 ### `ETCD_ENDPOINT=http://127.0.0.1:2379`
 
-Connect to etcd at given address
+Connect to etcd at given address.
 
 ## Policy
 
