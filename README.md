@@ -117,12 +117,22 @@ docker_container -> (container) {
 }
 ```
 
-## Rules
+## Mechanism
 
-### Node merging
+The `Kontena::Registrator::Docker` mechanism is used to observe the state of local Docker containers.
 
-Multiple Docker containers can register the same etcd node for a given Policy.
-This will behave deterministically when each container registers exactly the same value for that etcd node.
+Every time the Docker state changes, the policy is re-evaluated for each Docker container.
+Each such policy evaluation results in a single set of etcd nodes to register.
+
+The `Kontena::Registrator::Service` and `Kontena::Etcd::Writer` mechanisms are used to register these policy-generated nodes into etcd.
+Each time the policy is re-evaluated, the node set of etcd nodes is compared with the current set of nodes written to etcd.
+Any new or changed nodes are stored into etcd, and any nodes that are no longer known will be removed from etcd.
+This means that if a Docker container is destroyed, any etcd nodes registered by the Policy for that container will automatically be removed.
+
+The mechanisms are implemented using Celluloid Actors for fault-tolernace, where the system is able to survive and resume operation across any Docker and `etcd` API failures.
+
+Multiple Docker containers may also register the same etcd node for a given Policy.
+This will behave correctly when each container registers exactly the same value for that etcd node (XXX: except when un-registering nodes across different machines).
 
 #### §0 a single Docker container for a single Policy registers an etcd node with some value
 
