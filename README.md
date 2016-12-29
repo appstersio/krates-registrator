@@ -1,8 +1,35 @@
 # Kontena Registrator
 
-Register Docker containers to etcd for different applications.
+Use very simple declarative Ruby DSL [Policies](#Policy) to register etcd configuration nodes for Docker containers, with an automatic mechanism to handle configuration node updates and removals.
 
-The `Kontena::Registrator` module implements generic Docker -> `etcd` mechanisms, and allows the use of a declarative ***policy*** for configuring how Docker containers are translated into etcd nodes.
+Supports JSON configuration for policies, including multiple dynamically managed policy instances loaded from etcd.
+
+## Example
+### `etc/policies/skydns.rb`
+
+```ruby
+DOMAIN = ENV.fetch('SKYDNS_DOMAIN', 'skydns.local')
+NETWORK = ENV['SKYDNS_NETWORK']
+
+config do
+  etcd_path '/kontena/registrator/services/skydns/:service'
+
+  json_attr :domain, default: DOMAIN
+  json_attr :network, default: NETWORK
+
+  # TODO: def skydns_path
+end
+
+docker_container -> (container) {
+  # stopped container has an empty IPAddress
+  if ip = container['NetworkSettings', 'Networks', config.network, 'IPAddress']
+    {
+      "/skydns/#{config.domain.split('.').reverse.join('/')}/#{container.hostname}" => { host: ip },
+    }
+  end
+}
+```
+
 
 ## Development
 
@@ -91,31 +118,6 @@ end
 
 A new instance of the policy will be created for each matching node in etcd.
 The service instances will automatically be dynamically started, reloaded and stopped as the etcd configuration changes.
-
-### Example SkyDNS Policy
-
-```ruby
-DOMAIN = ENV.fetch('SKYDNS_DOMAIN', 'skydns.local')
-NETWORK = ENV['SKYDNS_NETWORK']
-
-config do
-  etcd_path '/kontena/registrator/services/skydns/:service'
-
-  json_attr :domain, default: DOMAIN
-  json_attr :network, default: NETWORK
-
-  # TODO: def skydns_path
-end
-
-docker_container -> (container) {
-  # stopped container has an empty IPAddress
-  if ip = container['NetworkSettings', 'Networks', config.network, 'IPAddress']
-    {
-      "/skydns/#{config.domain.split('.').reverse.join('/')}/#{container.hostname}" => { host: ip },
-    }
-  end
-}
-```
 
 ## Mechanism
 
