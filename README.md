@@ -16,8 +16,6 @@ config do
 
   json_attr :domain, default: DOMAIN
   json_attr :network, default: NETWORK
-
-  # TODO: def skydns_path
 end
 
 docker_container -> (container) {
