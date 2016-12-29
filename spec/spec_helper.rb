@@ -24,6 +24,7 @@ require 'kontena/etcd'
 require 'kontena/etcd/rspec'
 require 'kontena/registrator'
 
+require_relative 'fixture_helpers'
 require_relative 'docker_helpers'
 
 # See http://rubydoc.info/gems/rspec-core/RSpec/Core/Configuration
@@ -127,5 +128,6 @@ RSpec.configure do |config|
   end
 
   # Docker
+  config.include FixtureHelpers, :fixtures => true
   config.include DockerHelpers, :docker => true
 end

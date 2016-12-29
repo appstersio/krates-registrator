@@ -1,7 +1,7 @@
 require 'uri'
 
 module DockerHelpers
-  FIXTURES_PATH = File.join(File.dirname(__FILE__), 'fixtures')
+  include FixtureHelpers
 
   def docker_fixture(type, name)
     path = File.join(FIXTURES_PATH, 'docker', type.to_s, name + '.json')
