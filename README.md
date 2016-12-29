@@ -52,6 +52,71 @@ Load local `:policy/*.json` service configuration for policies.
 
 Connect to etcd at given address
 
+## Policy
+
+A declarative function mapping Docker container states to etcd nodes having a key and value.
+
+Policies are written as Ruby DSLs, registering a `docker_container -> (container) { ... }` lambda function that takes an (immutable) `Kontena::Registrator::Docker::Container` as an argument, and returns a Hash of `{ etcd-key => etcd-value }`.
+
+The `etcd-key` must be a String giving an etcd `/path` to the node to register.
+
+The `etcd-value` can either be any of:
+
+* `nil`: omit this etcd node
+* `String`: raw string value
+* any JSON-encodable value (`true`, `false`, `Integer`, `Float`, `Array`, `Hash`)
+
+### Configuration
+
+Each Policy can also support JSON configuration. Use the `config do ... end` to define the configuration schema, using `Kontena::JSON::Model#json_attr` statements:
+
+```ruby
+config do
+  json_attr :domain, default: 'skydns.local'
+  json_attr :network, default: 'bridge'
+end
+```
+
+### Dynamic Configuration from `etcd`
+
+The policies can also be configured dynamically, using JSON objects in etcd, using the `Kontena::Etcd::Model#etcd_path` statement:
+
+```ruby
+config do
+  etcd_path '/kontena/registrator/services/skydns/:service'
+
+  ...
+end
+```
+
+A new instance of the policy will be created for each matching node in etcd.
+The service instances will automatically be dynamically started, reloaded and stopped as the etcd configuration changes.
+
+### Example SkyDNS Policy
+
+```ruby
+DOMAIN = ENV.fetch('SKYDNS_DOMAIN', 'skydns.local')
+NETWORK = ENV['SKYDNS_NETWORK']
+
+config do
+  etcd_path '/kontena/registrator/services/skydns/:service'
+
+  json_attr :domain, default: DOMAIN
+  json_attr :network, default: NETWORK
+
+  # TODO: def skydns_path
+end
+
+docker_container -> (container) {
+  # stopped container has an empty IPAddress
+  if ip = container['NetworkSettings', 'Networks', config.network, 'IPAddress']
+    {
+      "/skydns/#{config.domain.split('.').reverse.join('/')}/#{container.hostname}" => { host: ip },
+    }
+  end
+}
+```
+
 ## Rules
 
 ### Node merging
