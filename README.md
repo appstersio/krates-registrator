@@ -146,7 +146,7 @@ The etcd node will be re-registered with a new value if the policy evaluates to 
 
 The etcd node will be un-registered once the policy no longer evaluates to that node.
 
-The etcd node will be expired from etcd if the Policy crashes and is unable to restart.
+The etcd node will be expired from etcd if the Policy crashes and is unable to refresh the nodes or restart.
 
 #### §1 multiple Docker containers for the same Policy register the same etcd node with the same value
 
@@ -171,7 +171,7 @@ The remaining policies will detect the removal during their refresh cycle, crash
 
 #### §4 multiple Policies (across different machines) register the same etcd node with a different value
 
-Each policy will take turns crashing, restarting, and re-setting the node to one of the two values.
+Each policy will take turns detectin the conflicting value, crashing, restarting, and re-setting the node to its local value.
 The node value in etcd will keep bouncing between the different values until the Policies agree on one value.
 
 ## Tests
