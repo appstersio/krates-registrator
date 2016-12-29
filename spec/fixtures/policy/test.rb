@@ -1,5 +1,5 @@
 docker_container -> (container) {
   {
-    "/skydns/local/skydns/#{container.hostname}" => { host: container['NetworkSettings', 'IPAddress'] },
+    "/kontena/test/#{container.hostname}" => container['NetworkSettings', 'IPAddress'],
   }
 }

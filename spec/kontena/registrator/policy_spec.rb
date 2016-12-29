@@ -121,8 +121,8 @@ describe Kontena::Registrator::Policy do
 
       it "returns etcd nodes for two containers" do
         expect(subject.apply(docker_state, apply_context)).to eq(
-          '/skydns/local/skydns/test-1' => '{"host":"172.18.0.2"}',
-          '/skydns/local/skydns/test-2' => '{"host":"172.18.0.3"}',
+          '/kontena/test/test-1' => "172.18.0.2",
+          '/kontena/test/test-2' => "172.18.0.3",
         )
       end
     end
@@ -133,7 +133,7 @@ describe Kontena::Registrator::Policy do
       it "Loads each policy .rb file" do
         subjects = described_class.loads(fixture_path(:policy))
 
-        expect(subjects.map{|policy| policy.name}).to eq ['test']
+        expect(subjects.map{|policy| policy.name}).to contain_exactly('test', 'skydns')
       end
     end
   end
