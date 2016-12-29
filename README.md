@@ -59,11 +59,24 @@ Connect to etcd at given address
 Multiple Docker containers can register the same etcd node for a given Policy.
 This will behave deterministically when each container registers exactly the same value for that etcd node.
 
+#### §0 a single Docker container for a single Policy registers an etcd node with some value
+
+The policy will register the etcd node with that value.
+
+The etcd node will remain registered with that value so long as the policy keeps evaluating to that node.
+
+The etcd node will be re-registered with a new value if the policy evaluates to a different value for that node.
+
+The etcd node will be un-registered once the policy no longer evaluates to that node.
+
+The etcd node will be expired from etcd if the Policy crashes and is unable to restart.
+
 #### §1 multiple Docker containers for the same Policy register the same etcd node with the same value
 
-The policy will register the etcd node with that value
+The policy will register the etcd node with that value.
 
 The etcd node will remain registered with that value so long as any Docker container registers that node.
+
 The etcd node will be un-registered once no more Docker containers register that node.
 
 #### §2 multiple Docker containers for the same Policy register the same etcd node with a different value
