@@ -133,6 +133,8 @@ class Kontena::Registrator::Policy
       nodes.merge!(container_nodes) do |key, old, new|
         if old == new
           logger.debug "Merge etcd=#{key} node for container=#{container}: #{old.inspect}"
+
+          old
         else
           logger.warn "Overlapping etcd=#{key} node for container=#{container}: #{old.inspect} -> #{new.inspect}"
 
