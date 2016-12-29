@@ -96,6 +96,8 @@ class Kontena::Registrator::Service
   # Refresh etcd nodes written by update
   #
   # Runs concurrently with run -> update
+  #
+  # @raise [Etcd::Error] if unable to refresh nodes, they may have expired
   def refresh
     logger.debug "refresh etcd..."
 

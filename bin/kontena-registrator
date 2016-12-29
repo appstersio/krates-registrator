@@ -7,5 +7,6 @@ require 'kontena/registrator'
 Kontena::Etcd::Model.etcd = Kontena::Etcd::Client.new
 
 registrator = Kontena::Registrator.run(
-  policy_globs: ENV['KONTENA_REGISTRATOR_POLICIES'].split()
+  policies_path: ENV['KONTENA_REGISTRATOR_POLICIES'], # required
+  services_path: ENV['KONTENA_REGISTRATOR_SERVICES'], # optional
 )
