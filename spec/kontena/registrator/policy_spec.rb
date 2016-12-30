@@ -72,6 +72,61 @@ describe Kontena::Registrator::Policy do
     end
   end
 
+  context "for a policy that attempts to mutate values", :docker => true do
+    subject do
+      policy = described_class.new(:skydns)
+      policy.context.config do
+        def test_class_mutate
+          self.class.include Comparable
+        end
+        def test_instance_mutate
+          @foo = 'bar'
+        end
+      end
+      policy
+    end
+
+    let :config_class do
+      subject.context[:config]
+    end
+
+    let :policy_config do
+      config_class.new()
+    end
+
+    let :apply_context do
+      subject.apply_context(policy_config)
+    end
+
+    let :docker_state do
+      docker_state_fixture('test-1')
+    end
+    
+    it "raises on config class mutation" do
+      subject.context.docker_container -> (container) {
+        config.test_class_mutate
+      }
+
+      expect{subject.apply(docker_state, apply_context)}.to raise_error(RuntimeError, /can't modify frozen/)
+    end
+
+    it "raises on config instance mutation" do
+      subject.context.docker_container -> (container) {
+        config.test_instance_mutate
+      }
+
+      expect{subject.apply(docker_state, apply_context)}.to raise_error(RuntimeError, /can't modify frozen/)
+    end
+
+    it "raises on apply context mutation" do
+      subject.context.docker_container -> (container) {
+        @config = nil
+      }
+
+      expect{subject.apply(docker_state, apply_context)}.to raise_error(RuntimeError, /can't modify frozen/)
+    end
+  end
+
   context "for a configurable SkyDNS policy", :docker => true do
     subject do
       policy = described_class.new(:skydns)
