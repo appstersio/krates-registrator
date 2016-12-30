@@ -120,7 +120,7 @@ describe Kontena::Registrator::Policy do
   end
 
   describe '#load' do
-    context "For a test policy", :fixtures => true, :docker => true do
+    context "For a simple test policy", :fixtures => true, :docker => true do
       let :docker_state do
         docker_state_fixture('test-1', 'test-2')
       end
@@ -142,6 +142,35 @@ describe Kontena::Registrator::Policy do
         expect(subject.apply(docker_state, apply_context)).to eq(
           '/kontena/test/test-1' => "172.18.0.2",
           '/kontena/test/test-2' => "172.18.0.3",
+        )
+      end
+    end
+
+    context "For the example skydns policy", :fixtures => true, :docker => true do
+      let :docker_state do
+        docker_state_fixture('test-1', 'test-2')
+      end
+
+      subject do
+        described_class.load(fixture_path(:policy, 'skydns.rb'))
+      end
+
+      let :config_class do
+        subject.context[:config]
+      end
+
+      let :policy_config do
+        config_class.new('test', domain: 'kontena.local', network: 'bridge')
+      end
+
+      let :apply_context do
+        subject.apply_context(policy_config)
+      end
+
+      it "returns etcd nodes for two containers" do
+        expect(subject.apply(docker_state, apply_context)).to eq(
+          '/skydns/local/kontena/test-1' => '{"host":"172.18.0.2"}',
+          '/skydns/local/kontena/test-2' => '{"host":"172.18.0.3"}',
         )
       end
     end

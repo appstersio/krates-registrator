@@ -7,14 +7,16 @@ config do
   json_attr :domain, default: DOMAIN
   json_attr :network, default: NETWORK
 
-  # TODO: def skydns_path
+  def skydns_path(name)
+    File.join(['/skydns', domain.split('.').reverse, name].flatten)
+  end
 end
 
 docker_container -> (container) {
   # stopped container has an empty IPAddress
   if ip = container['NetworkSettings', 'Networks', config.network, 'IPAddress']
     {
-      "/skydns/#{config.domain.split('.').reverse.join('/')}/#{container.hostname}" => { host: ip },
+      config.skydns_path(container.hostname) => { host: ip },
     }
   end
 }

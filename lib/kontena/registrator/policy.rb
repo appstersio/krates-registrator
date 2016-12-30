@@ -65,10 +65,11 @@ class Kontena::Registrator::Policy
     end
 
     # Declare a Kontena::Etcd::Model used to configure policy services
+    #
+    # @yield [class] block is evaluated within the new config model class 
     def config(&block)
       # policy-specific config class
-      @config = Class.new(Config)
-      @config.instance_eval(&block)
+      @config = Class.new(Config, &block)
     end
 
     # Register a Docker::Container handler
