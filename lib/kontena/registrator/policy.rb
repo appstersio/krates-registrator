@@ -55,7 +55,7 @@ class Kontena::Registrator::Policy
   # @param file [File]
   def load(file)
      @context.instance_eval(file.read, file.path)
-     @context.freeze # XXX: deep-freeze?
+     @context.freeze
   end
 
   # Load-time evaluation context for DSL

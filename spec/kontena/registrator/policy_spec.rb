@@ -101,7 +101,7 @@ describe Kontena::Registrator::Policy do
     let :docker_state do
       docker_state_fixture('test-1')
     end
-    
+
     it "raises on config class mutation" do
       subject.context.docker_container -> (container) {
         config.test_class_mutate
@@ -198,6 +198,24 @@ describe Kontena::Registrator::Policy do
           '/kontena/test/test-1' => "172.18.0.2",
           '/kontena/test/test-2' => "172.18.0.3",
         )
+      end
+    end
+
+    context "For a bad policy that tries to mutate the load context", :fixtures => true, :docker => true do
+      let :docker_state do
+        docker_state_fixture('test-1', 'test-2')
+      end
+
+      let :apply_context do
+        subject.apply_context()
+      end
+
+      subject do
+        described_class.load(fixture_path(:policy_bad, 'mutate-loadcontext.rb'))
+      end
+
+      it "fails to apply" do
+        expect{subject.apply(docker_state, apply_context)}.to raise_error(RuntimeError, /can't modify frozen #<Class:#<Kontena::Registrator::Policy::LoadContext:/)
       end
     end
 

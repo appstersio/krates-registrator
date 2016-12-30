@@ -13,9 +13,6 @@ config do
 end
 
 docker_container -> (container) {
-  STDERR.puts "container=#{container} config=#{config.inspect}"
-  STDERR.puts "config.class=#{config.class}"
-
   # stopped container has an empty IPAddress
   if ip = container['NetworkSettings', 'Networks', config.network, 'IPAddress']
     {
