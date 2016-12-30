@@ -16,18 +16,21 @@ config do
 
   json_attr :domain, default: DOMAIN
   json_attr :network, default: NETWORK
+
+  def skydns_path(name)
+    File.join(['/skydns', domain.split('.').reverse, name].flatten)
+  end
 end
 
 docker_container -> (container) {
   # stopped container has an empty IPAddress
   if ip = container['NetworkSettings', 'Networks', config.network, 'IPAddress']
     {
-      "/skydns/#{config.domain.split('.').reverse.join('/')}/#{container.hostname}" => { host: ip },
+      config.skydns_path(container.hostname) => { host: ip },
     }
   end
 }
 ```
-
 
 ## Development
 
@@ -81,7 +84,7 @@ Connect to etcd at given address.
 
 ## Policy
 
-A declarative function mapping Docker container states to etcd nodes having a key and value.
+A declarative function mapping `Kontena::Registrator::Docker::Container` states to etcd nodes having a key and value.
 
 Policies are written as Ruby DSLs, registering a `docker_container -> (container) { ... }` lambda function that takes an (immutable) `Kontena::Registrator::Docker::Container` as an argument, and returns a Hash of `{ etcd-key => etcd-value }`.
 
@@ -103,6 +106,9 @@ config do
   json_attr :network, default: 'bridge'
 end
 ```
+
+The `config` block is evaluated as a ruby `class` body, such that you can define your own config helper methods.
+Note that the config class and any config instances are frozen, to enforce deterministic policies.
 
 ### Dynamic Configuration from `etcd`
 
@@ -171,7 +177,7 @@ The remaining policies will detect the removal during their refresh cycle, crash
 
 #### §4 multiple Policies (across different machines) register the same etcd node with a different value
 
-Each policy will take turns detectin the conflicting value, crashing, restarting, and re-setting the node to its local value.
+Each policy will take turns detecting the conflicting value, crashing, restarting, and re-setting the node to its local value.
 The node value in etcd will keep bouncing between the different values until the Policies agree on one value.
 
 ## Tests
