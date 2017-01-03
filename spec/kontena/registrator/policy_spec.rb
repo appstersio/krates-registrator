@@ -76,8 +76,6 @@ describe Kontena::Registrator::Policy do
     subject do
       policy = described_class.new(:skydns)
       policy.context.config do
-        etcd_path '/kontena/test'
-        
         def test_class_mutate
           self.class.include Comparable
         end
@@ -93,7 +91,7 @@ describe Kontena::Registrator::Policy do
     end
 
     let :policy_config do
-      config_class.new()
+      subject.config_model.new()
     end
 
     let :apply_context do
@@ -132,9 +130,7 @@ describe Kontena::Registrator::Policy do
   context "for a configurable SkyDNS policy", :docker => true do
     subject do
       policy = described_class.new(:skydns)
-      policy.context.config do
-        etcd_path '/kontena/registrator/services/skydns/:service'
-
+      policy.context.config etcd_path: '/kontena/registrator/services/skydns/:service' do
         json_attr :domain, default: 'skydns.local'
         json_attr :network, default: 'bridge'
       end
@@ -152,27 +148,61 @@ describe Kontena::Registrator::Policy do
       docker_state_fixture('test-1', 'test-2')
     end
 
-    let :config_class do
-      subject.context[:config]
+    context "for a local config" do
+      let :policy_config do
+        subject.config_model.new(domain: 'kontena.local')
+      end
+
+      let :apply_context do
+        subject.apply_context(policy_config)
+      end
+
+      it "returns etcd nodes for two containers" do
+        expect(policy_config.class.included_modules).to include(Kontena::JSON::Model)
+        expect(policy_config.domain).to eq 'kontena.local'
+        expect(policy_config.network).to eq 'bridge'
+
+        expect(subject.apply(docker_state, apply_context)).to eq(
+          '/skydns/local/kontena/test-1' => '{"host":"172.18.0.2"}',
+          '/skydns/local/kontena/test-2' => '{"host":"172.18.0.3"}',
+        )
+      end
     end
 
-    let :policy_config do
-      config_class.new('test', domain: 'kontena.local')
-    end
+    context "for an etcd config", :etcd => true do
+      let :config_model do
+        subject.config_model_etcd
+      end
 
-    let :apply_context do
-      subject.apply_context(policy_config)
-    end
+      before do
+        etcd_server.load!(
+          '/kontena/registrator/services/skydns/test' => { 'domain' => 'kontena.local' },
+        )
+      end
 
-    it "returns etcd nodes for two containers" do
-      expect(config_class.included_modules).to include(Kontena::Etcd::Model, Kontena::JSON::Model)
-      expect(policy_config.domain).to eq 'kontena.local'
-      expect(policy_config.network).to eq 'bridge'
+      let :policy_config do
+          config_model.get('test')
+      end
 
-      expect(subject.apply(docker_state, apply_context)).to eq(
-        '/skydns/local/kontena/test-1' => '{"host":"172.18.0.2"}',
-        '/skydns/local/kontena/test-2' => '{"host":"172.18.0.3"}',
-      )
+      let :apply_context do
+        apply_context = subject.apply_context(policy_config)
+      end
+
+      it "loads a config from etcd" do
+        expect{policy_config}.to_not raise_error
+        expect(policy_config).to have_attributes(service: 'test', domain: 'kontena.local', network: 'bridge')
+      end
+
+      it "returns etcd nodes for two containers" do
+        expect(config_model.included_modules).to include(Kontena::Etcd::Model, Kontena::JSON::Model)
+        expect(policy_config.domain).to eq 'kontena.local'
+        expect(policy_config.network).to eq 'bridge'
+
+        expect(subject.apply(docker_state, apply_context)).to eq(
+          '/skydns/local/kontena/test-1' => '{"host":"172.18.0.2"}',
+          '/skydns/local/kontena/test-2' => '{"host":"172.18.0.3"}',
+        )
+      end
     end
   end
 
@@ -230,12 +260,8 @@ describe Kontena::Registrator::Policy do
         described_class.load(fixture_path(:policy, 'skydns.rb'))
       end
 
-      let :config_class do
-        subject.context[:config]
-      end
-
       let :policy_config do
-        config_class.new('test', domain: 'kontena.local', network: 'bridge')
+        subject.config_model.new(domain: 'kontena.local', network: 'bridge')
       end
 
       let :apply_context do

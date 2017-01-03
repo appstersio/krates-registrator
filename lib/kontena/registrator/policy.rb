@@ -33,11 +33,6 @@ class Kontena::Registrator::Policy
   # TODO: make etcd optional?
   class Config
     include Kontena::JSON::Model
-    include Kontena::Etcd::Model
-
-    def to_s
-      "#{etcd_key}"
-    end
   end
 
   attr_accessor :name, :context
@@ -65,10 +60,13 @@ class Kontena::Registrator::Policy
       instance_variable_get("@#{sym}")
     end
 
-    # Declare a Kontena::Etcd::Model used to configure policy services
+    # Declare a Kontena::JSON::Model used to configure this policy's services
     #
+    # @param etcd_path [String] Optional Kontena::Etcd::Model#etcd_path schema for loading config from etcd
     # @yield [class] block is evaluated within the new config model class
-    def config(&block)
+    def config(etcd_path: nil, &block)
+      @config_etcd_path = etcd_path
+
       # policy-specific config class
       @config = Class.new(Config, &block)
       @config.freeze
@@ -92,11 +90,29 @@ class Kontena::Registrator::Policy
     return @context[:config] != nil
   end
 
+  # Is the Policy configurable via etcd?
+  def config_etcd?
+    return @context[:config_etcd_path] != nil
+  end
+
   # Return any Config class that this policy has
   #
   # @return [nil, Class<Config>]
   def config_model
     return @context[:config]
+  end
+
+  # Return a Kontena::Etcd::Model Config class for this policy
+  #
+  # @return [Class<Kontena::Etcd::Model, Config>]
+  def config_model_etcd
+    config_etcd_path = @context[:config_etcd_path]
+
+    Class.new(config_model) do
+      include Kontena::Etcd::Model
+
+      etcd_path config_etcd_path
+    end
   end
 
   # Normalize policy nodes to etcd nodes
