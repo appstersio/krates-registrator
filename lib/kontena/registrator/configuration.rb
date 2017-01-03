@@ -34,8 +34,8 @@ module Kontena::Registrator::Configuration
     def each
       @policy_configs.each do |policy, configs|
         if configs
-          configs.each do |config_path, config|
-            yield policy, config
+          configs.each do |name, config|
+            yield policy, name, config
           end
         else
           yield policy, nil
@@ -46,27 +46,27 @@ module Kontena::Registrator::Configuration
     # @param policy [Kontena::Registrator::Policy]
     # @param config_key [nil, String]
     # @return [Boolean]
-    def include?(policy, config_key = nil)
+    def include?(policy, name = nil)
       return false unless @policy_configs.key? policy
 
       configs = @policy_configs[policy]
 
       # XXX: playing around with nils is dangerous
-      return true if config_key.nil? && configs.nil?
-      return true if config_key && configs && configs.key?(config_key)
+      return true if name.nil? && configs.nil?
+      return true if name && configs && configs.key?(name)
       return nil
     end
 
     # @param policy [Kontena::Registrator::Policy]
     # @param config_key [nil, String]
     # @return [Kontena::Registrator::Policy::Config, nil]
-    def [](policy, config_key = nil)
+    def [](policy, name = nil)
       configs = @policy_configs[policy]
 
-      if configs.nil? && config_key.nil?
+      if configs.nil? && name.nil?
         configs
       else
-        configs[config_key]
+        configs[name]
       end
     end
   end
@@ -84,15 +84,17 @@ module Kontena::Registrator::Configuration
     # Load configurations for policy from filesystem path
     #
     # @param policy [Kontena::Registrator::Policy]
-    # @return [Array<Kontena::Registrator::Policy::Config>]
+    # @yield [name, config]
+    # @yieldparam name [String] unique for this policy
+    # @yieldparam config [Array<Kontena::Registrator::Policy::Config>]
     def load_policy(path, policy)
       path = File.join(path, policy.name)
       paths = Dir.glob("#{path}/*.json")
 
-      paths.map { |path|
+      paths.each { |path|
         name = File.basename(path, ".json")
 
-        config = policy.config_model.new(name)
+        config = policy.config_model.new
 
         File.open(path) do |file|
           # TODO: error with file path
@@ -101,9 +103,9 @@ module Kontena::Registrator::Configuration
 
         config.freeze
 
-        logger.info "load policy=#{policy} config=#{name} from path=#{path}: #{config.to_json}"
+        logger.info "load policy=#{policy} name=#{name} from path=#{path}: #{config.to_json}"
 
-        config
+        yield name, config
       }
     end
 
@@ -113,7 +115,13 @@ module Kontena::Registrator::Configuration
     def load(path)
       @policies.each do |policy|
         if policy.config?
-          @state.update! policy, Hash[self.load_policy(path, policy).map{|config| [config.to_s, config]}]
+          configs = {}
+
+          load_policy(path, policy) do |name, config|
+            configs[name] = config
+          end
+
+          @state.update! policy, Hash[configs]
         else
           logger.info "load policy=#{policy} without config"
 

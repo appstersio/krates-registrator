@@ -19,15 +19,17 @@ class Kontena::Registrator::Manager
       @configs = { }
     end
 
-    def []=(policy, config, service)
-      @services[[policy, config ? config.to_s : nil]] = service
-      @configs[service] = [policy, config]
+    def []=(policy, name, service_config)
+      service, config = service_config
+      
+      @services[[policy, name]] = service
+      @configs[service] = [policy, name, config]
     end
 
     # Update config in-place for restart
-    def update(policy, config)
-      service = self[policy, config]
-      @configs[service] = [policy, config]
+    def update(policy, name, config)
+      service = @services[[policy, name]]
+      @configs[service] = [policy, name, config]
     end
 
     # Get Service for policy, with optional config
@@ -35,25 +37,25 @@ class Kontena::Registrator::Manager
     # @param policy [Kontena::Registrator::Policy]
     # @param config policy configuration object
     # @return [Service]
-    def [](policy, config = nil)
-      @services[[policy, config ? config.to_s : nil]]
+    def [](policy, name = nil)
+      @services[[policy, name]]
     end
 
-    # @yield [policy, config_key]
+    # @yield [policy, name]
     # @yieldparam policy [Kontena::Registrator::Policy]
-    # @yieldparam config_key [String, nil]
+    # @yieldparam name [String, nil]
     def each(&block)
       @services.each do |key, service|
-        policy, config_key = key
-        yield policy, config_key
+        policy, name = key
+        yield policy, name
       end
     end
 
     # @param policy [Kontena::Registrator::Policy]
     # @param config_key [String, nil]
     # @return [Service, nil]
-    def delete(policy, config_key = nil)
-      service = @services.delete([policy, config_key])
+    def delete(policy, name = nil)
+      service = @services.delete([policy, name])
       @configs.delete(service)
 
       return service
@@ -84,14 +86,14 @@ class Kontena::Registrator::Manager
     logger.debug "apply..."
 
     # sync up sevices
-    config_state.each do |policy, config|
-      logger.debug "apply policy=#{policy} with config=#{config.to_s}: #{config.to_json}"
+    config_state.each do |policy, name, config|
+      logger.debug "apply policy=#{policy} with config=#{name}: #{config.to_json}"
 
       begin
-        if @state[policy, config].nil?
-          self.create(policy, config)
+        if @state[policy, name].nil?
+          self.create(policy, name, config)
         elsif config
-          self.reload(policy, config)
+          self.reload(policy, name, config)
         end
       rescue ServiceError => error
         # skip, omit from @services, and thus retry on next config update
@@ -100,9 +102,9 @@ class Kontena::Registrator::Manager
     end
 
     # sync down services
-    @state.each do |policy, config_key|
-      unless config_state.include? policy, config_key
-        self.remove(policy, config_key)
+    @state.each do |policy, name|
+      unless config_state.include? policy, name
+        self.remove(policy, name)
       end
     end
   end
@@ -115,11 +117,11 @@ class Kontena::Registrator::Manager
 
   def actor_exit(actor, reason)
     if params = @state.find_service(actor)
-      policy, config = params
+      policy, name, config = params
 
-      logger.error "restart service=#{actor.inspect} with policy=#{policy} config=#{config}: #{reason.inspect}"
+      logger.error "restart service=#{actor.inspect} with policy=#{policy}:#{name}: #{reason.inspect}"
 
-      self.create(policy, config)
+      self.create(policy, name, config)
     else
       # XXX: do not warn if removed service
       logger.warn "exit actor=#{actor.inspect} for unknown service: #{reason.inspect}"
@@ -130,8 +132,8 @@ class Kontena::Registrator::Manager
   #
   # @param policy [Kontena::Registrator::Policy]
   # @param config [nil, Kontena::Registrator::Policy::Config]
-  def status(policy, config = nil)
-    @state[policy, config]
+  def status(policy, name = nil)
+    @state[policy, name]
   end
 
   # Supervise a new Service for the given Policy and optional configuration
@@ -139,16 +141,16 @@ class Kontena::Registrator::Manager
   # @param policy [Kontena::Registrator::Policy]
   # @param config [nil, Kontena::Registrator::Policy::Config]
   # @raise [ServiceError]
-  def create(policy, config = nil)
-    logger.info "create policy=#{policy} with config=#{config}: #{config.to_json}"
+  def create(policy, name = nil, config = nil)
+    logger.info "create policy=#{policy}:#{name}: #{config.to_json}"
 
     begin
-      service = @class.new(policy, config, **@opts)
+      service = @class.new(policy, name, config, **@opts)
     rescue => error
-      raise ServiceError, "initialize policy=#{policy} config=#{config}: #{error}"
+      raise ServiceError, "initialize policy=#{policy}:#{name}: #{error}"
     end
 
-    @state[policy, config] = service
+    @state[policy, name] = [service, config]
 
     self.link(service)
   end
@@ -158,10 +160,10 @@ class Kontena::Registrator::Manager
   # @param policy [Kontena::Registrator::Policy]
   # @param config [nil, Kontena::Etcd::Model]
   # @raise [ServiceError]
-  def reload(policy, config = nil)
-    service = @state[policy, config]
+  def reload(policy, name, config)
+    service = @state[policy, name]
 
-    logger.info "reload policy=#{policy} with config=#{config}: #{config.to_json}"
+    logger.info "reload policy=#{policy} with config=#{name}: #{config.to_json}"
 
     begin
       service.reload config
@@ -170,7 +172,7 @@ class Kontena::Registrator::Manager
     end
 
     # update config in state for restart
-    @state.update(policy, config)
+    @state.update(policy, name, config)
 
     service
   end
@@ -179,10 +181,10 @@ class Kontena::Registrator::Manager
   #
   # @param policy [Kontena::Registrator::Policy]
   # @param config_path [nil, String]
-  def remove(policy, config_path = nil)
-    service = @state.delete(policy, config_path)
+  def remove(policy, name = nil)
+    service = @state.delete(policy, name)
 
-    logger.info "remove policy=#{policy} with config=#{config_path}: #{service}"
+    logger.info "remove policy=#{policy} with config=#{name}: #{service}"
 
     begin
       service.stop

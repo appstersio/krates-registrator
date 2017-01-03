@@ -35,7 +35,7 @@ describe Kontena::Registrator::Manager, :celluloid => true do
 
     it "Creates a single configurationless Service" do
       expect(configuration_observable).to receive(:observe).once.and_yield(config_state)
-      expect(subject.wrapped_object).to receive(:create).once.with(policy, nil).and_call_original
+      expect(subject.wrapped_object).to receive(:create).once.with(policy, nil, nil).and_call_original
       expect(Kontena::Registrator::Service).to receive(:new).and_return(service)
       expect(subject.wrapped_object).to receive(:link).with(service)
 
@@ -46,7 +46,7 @@ describe Kontena::Registrator::Manager, :celluloid => true do
 
     it "Does not reload a configurationless Service" do
       expect(configuration_observable).to receive(:observe).once.and_yield(config_state).and_yield(config_state)
-      expect(subject.wrapped_object).to receive(:create).once.with(policy, nil).and_call_original
+      expect(subject.wrapped_object).to receive(:create).once.with(policy, nil, nil).and_call_original
       expect(Kontena::Registrator::Service).to receive(:new).and_return(service)
       expect(subject.wrapped_object).to receive(:link).with(service)
       expect(subject.wrapped_object).to_not receive(:reload)
@@ -59,19 +59,13 @@ describe Kontena::Registrator::Manager, :celluloid => true do
 
   context "For a single configurable policy" do
     let :config1 do
-      instance_double(Kontena::Registrator::Policy::Config, :config1_v1,
-        to_s: 'test1',
-      )
+      instance_double(Kontena::Registrator::Policy::Config, :config1_v1)
     end
     let :config1_v2 do
-      instance_double(Kontena::Registrator::Policy::Config, :config1_v2,
-        to_s: 'test1',
-      )
+      instance_double(Kontena::Registrator::Policy::Config, :config1_v2)
     end
     let :config2 do
-      instance_double(Kontena::Registrator::Policy::Config, :config2,
-        to_s: 'test2',
-      )
+      instance_double(Kontena::Registrator::Policy::Config, :config2)
     end
 
     let :service1 do
@@ -89,8 +83,8 @@ describe Kontena::Registrator::Manager, :celluloid => true do
           },
         ))
 
-      expect(subject.wrapped_object).to receive(:create).once.with(policy, config1).and_call_original
-      expect(Kontena::Registrator::Service).to receive(:new).with(policy, config1, docker_observable: docker_observable).and_return(service1)
+      expect(subject.wrapped_object).to receive(:create).once.with(policy, 'test1', config1).and_call_original
+      expect(Kontena::Registrator::Service).to receive(:new).with(policy, 'test1', config1, docker_observable: docker_observable).and_return(service1)
       expect(subject.wrapped_object).to receive(:link).with(service1)
 
       subject.run
@@ -111,11 +105,11 @@ describe Kontena::Registrator::Manager, :celluloid => true do
           },
         ))
 
-      expect(subject.wrapped_object).to receive(:create).once.with(policy, config1).and_call_original
-      expect(Kontena::Registrator::Service).to receive(:new).with(policy, config1, docker_observable: docker_observable).and_return(service1)
+      expect(subject.wrapped_object).to receive(:create).once.with(policy, 'test1', config1).and_call_original
+      expect(Kontena::Registrator::Service).to receive(:new).with(policy, 'test1', config1, docker_observable: docker_observable).and_return(service1)
       expect(subject.wrapped_object).to receive(:link).with(service1)
 
-      expect(subject.wrapped_object).to receive(:reload).once.with(policy, config1_v2).and_call_original
+      expect(subject.wrapped_object).to receive(:reload).once.with(policy, 'test1', config1_v2).and_call_original
       expect(service1).to receive(:reload).with(config1_v2)
 
       subject.run
@@ -137,13 +131,13 @@ describe Kontena::Registrator::Manager, :celluloid => true do
           },
         ))
 
-      expect(subject.wrapped_object).to receive(:create).once.with(policy, config1).and_call_original
-      expect(Kontena::Registrator::Service).to receive(:new).with(policy, config1, docker_observable: docker_observable).and_return(service1)
+      expect(subject.wrapped_object).to receive(:create).once.with(policy, 'test1', config1).and_call_original
+      expect(Kontena::Registrator::Service).to receive(:new).with(policy, 'test1', config1, docker_observable: docker_observable).and_return(service1)
       expect(subject.wrapped_object).to receive(:link).with(service1)
 
       expect(service1).to receive(:reload).with(config1) # config remains the same
-      expect(subject.wrapped_object).to receive(:create).once.with(policy, config2).and_call_original
-      expect(Kontena::Registrator::Service).to receive(:new).with(policy, config2, docker_observable: docker_observable).and_return(service2)
+      expect(subject.wrapped_object).to receive(:create).once.with(policy, 'test2', config2).and_call_original
+      expect(Kontena::Registrator::Service).to receive(:new).with(policy, 'test2', config2, docker_observable: docker_observable).and_return(service2)
       expect(subject.wrapped_object).to receive(:link).with(service2)
 
       subject.run
@@ -165,12 +159,12 @@ describe Kontena::Registrator::Manager, :celluloid => true do
           },
         ))
 
-      expect(subject.wrapped_object).to receive(:create).once.with(policy, config1).and_call_original
-      expect(Kontena::Registrator::Service).to receive(:new).with(policy, config1, docker_observable: docker_observable).and_return(service1)
+      expect(subject.wrapped_object).to receive(:create).once.with(policy, 'test1', config1).and_call_original
+      expect(Kontena::Registrator::Service).to receive(:new).with(policy, 'test1', config1, docker_observable: docker_observable).and_return(service1)
       expect(subject.wrapped_object).to receive(:link).with(service1)
 
-      expect(subject.wrapped_object).to receive(:create).once.with(policy, config2).and_call_original
-      expect(Kontena::Registrator::Service).to receive(:new).with(policy, config2, docker_observable: docker_observable).and_return(service2)
+      expect(subject.wrapped_object).to receive(:create).once.with(policy, 'test2', config2).and_call_original
+      expect(Kontena::Registrator::Service).to receive(:new).with(policy, 'test2', config2, docker_observable: docker_observable).and_return(service2)
       expect(subject.wrapped_object).to receive(:link).with(service2)
 
       expect(subject.wrapped_object).to receive(:remove).once.with(policy, 'test1').and_call_original
@@ -188,8 +182,8 @@ describe Kontena::Registrator::Manager, :celluloid => true do
       Class.new do
         include Celluloid
 
-        def initialize(policy, config = nil, asdf: 'quux')
-          raise RuntimeError if config.to_s == 'test1'
+        def initialize(policy, name, config = nil, asdf: 'quux')
+          raise RuntimeError if name == 'test1'
         end
       end
     end
@@ -199,14 +193,10 @@ describe Kontena::Registrator::Manager, :celluloid => true do
     end
 
     let :config1 do
-      instance_double(Kontena::Registrator::Policy::Config, :config1_v1,
-        to_s: 'test1',
-      )
+      instance_double(Kontena::Registrator::Policy::Config, :config1)
     end
     let :config2 do
-      instance_double(Kontena::Registrator::Policy::Config, :config2,
-        to_s: 'test2',
-      )
+      instance_double(Kontena::Registrator::Policy::Config, :config2)
     end
 
     it "Logs the error, and continues to start other services" do
@@ -230,7 +220,7 @@ describe Kontena::Registrator::Manager, :celluloid => true do
       Class.new do
         include Celluloid
 
-        def initialize(policy, config = nil, asdf: 'quux')
+        def initialize(policy, name, config = nil, asdf: 'quux')
 
         end
 
@@ -245,9 +235,7 @@ describe Kontena::Registrator::Manager, :celluloid => true do
     end
 
     let :config1 do
-      instance_double(Kontena::Registrator::Policy::Config, :config1_v1,
-        to_s: 'test1',
-      )
+      instance_double(Kontena::Registrator::Policy::Config, :config1_v1)
     end
 
     it "Starts the service" do

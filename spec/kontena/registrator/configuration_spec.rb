@@ -85,7 +85,7 @@ describe Kontena::Registrator::Configuration::Local do
 
       expect(state).to_not be_nil
       expect(state.include? test_policy).to be_truthy
-      expect(state.include? skydns_policy, '/kontena/registrator/services/skydns/kontena-local').to be_truthy
+      expect(state.include? skydns_policy, 'kontena-local').to be_truthy
     end
   end
 end

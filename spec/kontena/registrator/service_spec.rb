@@ -112,7 +112,7 @@ describe Kontena::Registrator::Service do
     subject do
       allow(policy).to receive(:apply_context).with(config).and_return(apply_context)
 
-      described_class.new(policy, config, docker_observable: docker_observable, start: false)
+      described_class.new(policy, 'test', config, docker_observable: docker_observable, start: false)
     end
 
     context "for a single Docker container", :docker => true do

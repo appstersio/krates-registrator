@@ -14,18 +14,19 @@ class Kontena::Registrator::Service
   # @param policy [Kontena::Registrator::Policy]
   # @param config [Kontena::Registrator::Policy::Config, nil] policy#config_model instance
   # @param start [Boolean] autostart when supervised, set to false for test cases
-  def initialize(policy, config = nil, docker_observable: , start: true)
+  def initialize(policy, name = nil, config = nil, docker_observable: , start: true)
     @docker_observable = docker_observable
     @etcd_writer = Kontena::Etcd::Writer.new(ttl: ETCD_TTL)
     @policy = policy
+    @name = name
     @context = policy.apply_context(config)
 
     self.start if start
   end
 
   def to_s
-    if @context.config
-      "#{@policy}:#{@context.config}"
+    if name
+      "#{@policy}:#{@name}"
     else
       "#{@policy}"
     end
