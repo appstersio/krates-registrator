@@ -76,6 +76,8 @@ describe Kontena::Registrator::Policy do
     subject do
       policy = described_class.new(:skydns)
       policy.context.config do
+        etcd_path '/kontena/test'
+        
         def test_class_mutate
           self.class.include Comparable
         end
