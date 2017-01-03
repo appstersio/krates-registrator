@@ -66,8 +66,6 @@ Load `*.rb` policy files.
 
 Load local `:policy/*.json` service configuration for policies.
 
-XXX: assumes an etcd model schema of the form `etcd_path '.../:name'`, with a single symbol.
-
 ### `LOG_LEVEL=...`
 
 * `debug`
@@ -123,7 +121,7 @@ end
 A new instance of the policy will be created for each matching node in etcd.
 The service instances will automatically be dynamically started, reloaded and stopped as the etcd configuration changes.
 
-If `ETCD_ENDPOINT=...` is configured, then etcd-configurable policies will be loaded from etcd. Otherwise, any configuration will be loaed from the `KONTENA_REGISTRATOR_SERVICES` path.
+If `ETCD_ENDPOINT=...` is configured, then etcd-configurable policies will be loaded from etcd. Otherwise, any configurations will be loaed from the `KONTENA_REGISTRATOR_SERVICES` path.
 
 ## Mechanism
 
