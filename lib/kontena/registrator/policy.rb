@@ -30,6 +30,7 @@ class Kontena::Registrator::Policy
     policy
   end
 
+  # TODO: make etcd optional?
   class Config
     include Kontena::JSON::Model
     include Kontena::Etcd::Model

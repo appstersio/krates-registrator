@@ -48,7 +48,7 @@ class Kontena::Registrator::Service
   #
   # The config should never be nil.
   #
-  # This is different from a restart, in that it preserves the Etcd::Writer state
+  # This is different from a restart, in that it preserves the Kontena::Etcd::Writer state
   #
   # @param config [Kontena::Registrator::Policy::Config] policy#config_model instance
   def reload(config)
@@ -97,7 +97,7 @@ class Kontena::Registrator::Service
   #
   # Runs concurrently with run -> update
   #
-  # @raise [Etcd::Error] if nodes have expired or been modified
+  # @raise [Kontena::Etcd::Error] if nodes have expired or been modified
   def refresh
     logger.debug "refresh etcd..."
 
