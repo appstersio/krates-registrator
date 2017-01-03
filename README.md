@@ -110,6 +110,8 @@ end
 The `config` block is evaluated as a ruby `class` body, such that you can define your own config helper methods.
 Note that the config class and any config instances are frozen, to enforce deterministic policies.
 
+Policy configurations are loaded from `KONTENA_REGISTRATOR_SERVICES=etc/services/:policy/*.json`.
+
 ### Dynamic Configuration from `etcd`
 
 The policies can also be configured dynamically, using JSON objects in etcd, using an `Kontena::Etcd::Model#etcd_path` option:
@@ -122,6 +124,8 @@ end
 
 A new instance of the policy will be created for each matching node in etcd.
 The service instances will automatically be dynamically started, reloaded and stopped as the etcd configuration changes.
+
+If `ETCD_ENDPOINT=...` is configured, then etcd-configurable policies will be loaded from etcd. Otherwise, any configuration will be loaed from the `KONTENA_REGISTRATOR_SERVICES` path.
 
 ## Mechanism
 
