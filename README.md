@@ -2,7 +2,7 @@
 
 Use very simple declarative Ruby DSL [Policies](#Policy) to register etcd configuration nodes for Docker containers, with an automatic mechanism to handle configuration node updates and removals.
 
-Supports JSON configuration for policies, including multiple dynamically managed policy instances loaded from etcd.
+Supports JSON configuration for policies, including multiple dynamically managed policy instances loaded from etcd, or local JSON files.
 
 ## Example
 ### `etc/policies/skydns.rb`
@@ -11,9 +11,7 @@ Supports JSON configuration for policies, including multiple dynamically managed
 DOMAIN = ENV.fetch('SKYDNS_DOMAIN', 'skydns.local')
 NETWORK = ENV['SKYDNS_NETWORK']
 
-config do
-  etcd_path '/kontena/registrator/services/skydns/:service'
-
+config etcd_path: '/kontena/registrator/services/skydns/:service' do
   json_attr :domain, default: DOMAIN
   json_attr :network, default: NETWORK
 
