@@ -112,13 +112,11 @@ Note that the config class and any config instances are frozen, to enforce deter
 
 ### Dynamic Configuration from `etcd`
 
-The policies can also be configured dynamically, using JSON objects in etcd, using the `Kontena::Etcd::Model#etcd_path` statement:
+The policies can also be configured dynamically, using JSON objects in etcd, using an `Kontena::Etcd::Model#etcd_path` option:
 
 ```ruby
-config do
-  etcd_path '/kontena/registrator/services/skydns/:service'
-
-  ...
+config etcd_path: '/kontena/registrator/services/skydns/:service' do
+  json_attr ...
 end
 ```
 
