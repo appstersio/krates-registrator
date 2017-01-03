@@ -78,6 +78,8 @@ Load local `:policy/*.json` service configuration for policies.
 
 Connect to etcd at given address.
 
+Also enables dynamic policy `config etcd_path: ...` loading, which is disabled per default.
+
 ## Policy
 
 A declarative function mapping `Kontena::Registrator::Docker::Container` states to etcd nodes having a key and value.
