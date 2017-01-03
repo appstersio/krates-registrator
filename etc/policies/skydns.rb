@@ -1,7 +1,7 @@
 DOMAIN = ENV.fetch('SKYDNS_DOMAIN', 'skydns.local')
 NETWORK = ENV['SKYDNS_NETWORK']
 
-config do
+config etcd_path: '/kontena/registrator/services/skydns/:service' do
   json_attr :domain, default: DOMAIN
   json_attr :network, default: NETWORK
 

@@ -75,23 +75,22 @@ module Kontena::Registrator::Configuration
   class Local
     include Kontena::Logging
 
-    def initialize(observable, policies)
-      @observable = observable
-      @policies = policies
-      @state = State.new
+    # @param path [String] local filesystem path to dir containing :policy/:service.json files
+    def initialize(path)
+      @path = path
     end
 
     # Load configurations for policy from filesystem path
     #
     # @param policy [Kontena::Registrator::Policy]
-    # @yield [name, config]
-    # @yieldparam name [String] unique for this policy
-    # @yieldparam config [Array<Kontena::Registrator::Policy::Config>]
-    def load_policy(path, policy)
-      path = File.join(path, policy.name)
+    # @return [Hash{String => Array<Kontena::Registrator::Policy::Config>]}]
+    def load_policy(policy)
+      return {} unless @path
+
+      path = File.join(@path, policy.name)
       paths = Dir.glob("#{path}/*.json")
 
-      paths.each { |path|
+      Hash[paths.map { |path|
         name = File.basename(path, ".json")
 
         config = policy.config_model.new
@@ -105,32 +104,30 @@ module Kontena::Registrator::Configuration
 
         logger.info "load policy=#{policy} name=#{name} from path=#{path}: #{config.to_json}"
 
-        yield name, config
-      }
+        [name, config]
+      }]
     end
 
-    # Load policy configs from path to @state and update observable
+    # Load policy configs from @path and return State
     #
-    # @param path [String] local filesystem path to dir containing :policy/:service.json files
-    def load(path)
-      @policies.each do |policy|
+    # @param policies [Array<Kontena::Registrator::Policy>]
+    # @return [Kontena::Registartor::Configuration::State]
+    def load(policies)
+      state = State.new
+
+      policies.each do |policy|
         if policy.config?
-          configs = {}
+          configs = load_policy(policy)
 
-          load_policy(path, policy) do |name, config|
-            configs[name] = config
-          end
-
-          @state.update! policy, Hash[configs]
+          state.update! policy, configs
         else
           logger.info "load policy=#{policy} without config"
 
-          @state.update! policy, nil
+          state.update! policy, nil
         end
       end
 
-      # fake it
-      @observable.update(@state.export)
+      state
     end
   end
 
@@ -140,9 +137,10 @@ module Kontena::Registrator::Configuration
     include Kontena::Logging
 
     # @param policies [Array<Policy>]
-    def initialize(observable, policies, start: true)
+    def initialize(observable, policies, local_configuration, start: true)
       @observable = observable
       @policies = policies
+      @local_configuration = local_configuration
       @state = State.new
 
       logger.debug "initialize with policies=#{@policies}"
@@ -152,9 +150,12 @@ module Kontena::Registrator::Configuration
 
     def start
       @policies.each do |policy|
-        if policy.config?
+        if policy.config_etcd?
           # dynamic configurable policy
           self.start_policy(policy)
+        elsif policy.config?
+          # static configurable policy
+          self.load_policy(policy)
         else
           # static configurationless policy
           self.apply_policy(policy)
@@ -164,9 +165,15 @@ module Kontena::Registrator::Configuration
       self.update!
     end
 
+    # Start a dynamically configurable policy
     def start_policy(policy)
       # start a new PolicyConfigurator, which sends us apply_policy
       PolicyConfigurator.supervise args: [policy, Actor.current, :apply_policy]
+    end
+
+    # Load a statically configurable policy
+    def load_policy(policy)
+      apply_policy policy, @local_configuration.load_policy(policy)
     end
 
     # Called by PolicyConfigurator
@@ -192,6 +199,7 @@ module Kontena::Registrator::Configuration
 
     def initialize(policy, configurator, message, start: true)
       @policy = policy
+      @etcd_model = policy.config_model_etcd
       @configurator = configurator
       @message = message
 
@@ -203,10 +211,10 @@ module Kontena::Registrator::Configuration
     end
 
     def run
-      logger.info "configure policy=#{@policy} from #{@policy.config_model.etcd_schema}"
+      logger.info "configure policy=#{@policy} from etcd=#{@etcd_model.etcd_schema}"
 
       # TODO: trap invalid configuration errors?
-      @policy.config_model.watch do |configs|
+      @etcd_model.watch do |configs|
         logger.debug "configure policy=#{@policy} with #configs=#{configs.size}"
 
         @configurator.sync @message, @policy, configs.to_h

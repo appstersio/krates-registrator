@@ -13,22 +13,23 @@ module Kontena
 
     include Kontena::Logging
 
-    def initialize(policies_path: , services_path: nil)
+    def initialize(policies_path: , services_path: [], etcd_endpoint: nil)
       super
 
       # Load policy DSL files
       @policies = Policy.loads(policies_path)
 
+      local_configuration = Configuration::Local.new(services_path)
+
       # Load configuration
       @configuration_observable = Kontena::Observable.new # Configuration::State
 
-      if services_path
-        # Load static local configuration
-        local_configuration = Configuration::Local.new(@configuration_observable, @policies)
-        local_configuration.load(services_path)
-      else
+      if etcd_endpoint
         # Load dynamic etcd configuration
-        supervise type: Configuration::Configurator, as: :configuration, args: [@configuration_observable, @policies]
+        supervise type: Configuration::Configurator, as: :configuration, args: [@configuration_observable, @policies, local_configuration]
+      else
+        # Load static local configuration
+        @configuration_observable.update local_configuration.load(@policies).export
       end
 
       # Shared Docker state, updated by the running Docker::Actor, used

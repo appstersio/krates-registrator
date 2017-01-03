@@ -69,19 +69,14 @@ describe Kontena::Registrator::Configuration::Local do
       [test_policy, skydns_policy]
     end
 
-    let :observable do
-      instance_double(Kontena::Observable)
-    end
-
     subject do
-      described_class.new(observable, policies)
+      described_class.new(fixture_path(:services))
     end
 
     it "Loads both configurationless and configured policies" do
       state = nil
 
-      expect(observable).to receive(:update) { |update_state| state = update_state }
-      subject.load(fixture_path(:services))
+      state = subject.load(policies)
 
       expect(state).to_not be_nil
       expect(state.include? test_policy).to be_truthy
