@@ -91,7 +91,7 @@ describe Kontena::Registrator::Service do
         expect(etcd_server.logs).to eq [
           [:set, '/kontena/test/test-1'],
           [:set, '/kontena/test/test-2'],
-          [:delete, '/kontena/test/test-2'],
+          [:compareAndDelete, '/kontena/test/test-2'],
         ]
         expect(etcd_server.nodes).to eq(
           '/kontena/test/test-1' => { 'host' => "172.18.0.2" },
@@ -167,7 +167,7 @@ describe Kontena::Registrator::Service do
         expect(etcd_server.logs).to eq [
           [:set, '/kontena/test/test-1'],
           [:set, '/kontena/test2/test-1'],
-          [:delete, '/kontena/test/test-1'],
+          [:compareAndDelete, '/kontena/test/test-1'],
         ]
         expect(etcd_server.nodes).to eq(
           '/kontena/test2/test-1' => { 'host' => "172.18.0.2" },
@@ -193,7 +193,7 @@ describe Kontena::Registrator::Service do
         expect(etcd_server).to be_modified
         expect(etcd_server.logs).to eq [
           [:set, '/kontena/test/test-1'],
-          [:delete, '/kontena/test/test-1'],
+          [:compareAndDelete, '/kontena/test/test-1'],
         ]
         expect(etcd_server.nodes).to eq({})
       end
