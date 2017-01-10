@@ -1,4 +1,18 @@
 describe Kontena::Registrator::Policy do
+  describe '#apply_nodes' do
+      subject do
+        policy = described_class.new(:test)
+      end
+
+      it "Skips an nil hash" do
+        expect(subject.apply_nodes(nil)).to eq({})
+      end
+
+      it "Skips an nil value" do
+        expect(subject.apply_nodes({'/kontena/test' => nil})).to eq({})
+      end
+  end
+
   context "for a sample SkyDNS policy", :docker => true do
     subject do
       policy = described_class.new(:skydns)

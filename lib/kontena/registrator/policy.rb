@@ -133,7 +133,7 @@ class Kontena::Registrator::Policy
       else
         raise TypeError, "Invalid value for etcd #{key}: #{value.inspect}"
       end
-    }]
+    }.compact]
   end
 
   # Compile a Docker::State into a set of etcd nodes
