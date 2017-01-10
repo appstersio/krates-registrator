@@ -54,15 +54,15 @@ Build with Docker:
 
 Run with Docker:
 
-`docker run --rm --name kontena-registrator --net host -v /var/run/docker.sock:/var/run/docker.sock -e LOG_LEVEL=info -e KONTENA_REGISTRATOR_POLICIES=etc/policies/*.rb kontena/registrator`
+`docker run --rm --name kontena-registrator --net host -v /var/run/docker.sock:/var/run/docker.sock -e LOG_LEVEL=info -e KONTENA_REGISTRATOR_POLICIES=etc/policies kontena/registrator`
 
 ## Config
 
-### `KONTENA_REGISTRATOR_POLICIES=etc/policies/`
+### `KONTENA_REGISTRATOR_POLICIES=etc/policies`
 
 Load `*.rb` policy files.
 
-### `KONTENA_REGISTRATOR_SERVICES=etc/services/`
+### `KONTENA_REGISTRATOR_SERVICES=etc/services`
 
 Load local `:policy/*.json` service configuration for policies.
 
