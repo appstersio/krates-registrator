@@ -8,13 +8,19 @@ require 'kontena/observable'
 
 # Follow Docker containers
 module Kontena::Registrator::Docker
+  # @return [Hash]
+  def self.parse_env(array)
+    Hash[array.map{|env| env.split('=', 2)}]
+  end
+
   # Immutable container state
   class Container
-    attr_accessor :id, :json
+    attr_reader :id, :json, :env
 
     def initialize(id, json)
       @id = id
       @json = json
+      @env = Kontena::Registrator::Docker.parse_env(json.dig('Config', 'Env'))
 
       self.freeze
       self.json.freeze # TODO: deepfreeze
@@ -33,12 +39,19 @@ module Kontena::Registrator::Docker
       value
     end
 
-    def name
-      self['Name'].split('/').last
-    end
-
     def hostname
       self['Config', 'Hostname']
+    end
+
+    def label(label)
+      self['Config', 'Labels', label]
+    end
+    def labels
+      self['Config', 'Labels']
+    end
+
+    def name
+      self['Name'].split('/').last
     end
 
     def networks

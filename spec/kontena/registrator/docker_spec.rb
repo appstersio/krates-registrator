@@ -6,6 +6,10 @@ describe Kontena::Registrator::Docker::Container, :docker => true do
       expect(subject.id).to eq '10c1de7f15b5596f53b7e8ef63d2f16d19da540ab34a402701c81633d090685d'
     end
 
+    it "has an PATH env" do
+      expect(subject.env['PATH']).to eq '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
+    end
+
     it "has a name" do
       expect(subject.name).to eq 'test-1'
     end
