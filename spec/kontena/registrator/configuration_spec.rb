@@ -83,4 +83,28 @@ describe Kontena::Registrator::Configuration::Local do
       expect(state.include? skydns_policy, 'kontena-local').to be_truthy
     end
   end
+
+  context "For a flat service configuration file", :fixtures => true do
+    let :skydns_policy do
+      Kontena::Registrator::Policy.load(fixture_path(:policy, 'skydns.rb'))
+    end
+
+    let :policies do
+      [skydns_policy]
+    end
+
+    subject do
+      described_class.new(fixture_path(:services_flat))
+    end
+
+    it "Loads the flat config" do
+      state = nil
+
+      state = subject.load(policies)
+
+      expect(state).to_not be_nil
+      expect(state.include? skydns_policy, 'skydns').to be_truthy
+    end
+
+  end
 end

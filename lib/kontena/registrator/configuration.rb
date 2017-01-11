@@ -88,7 +88,7 @@ module Kontena::Registrator::Configuration
       return {} unless @path
 
       path = File.join(@path, policy.name)
-      paths = Dir.glob("#{path}/*.json")
+      paths = Dir.glob(["#{path}.json", "#{path}/*.json"])
 
       Hash[paths.map { |path|
         name = File.basename(path, ".json")
