@@ -83,6 +83,11 @@ class Kontena::Registrator::Policy
     def docker_container(proc)
       @docker_container = proc
     end
+
+    # Define helper methods
+    def helpers(&block)
+      @helpers = Module.new(&block)
+    end
   end
 
   # Is the Policy configurable?
@@ -169,7 +174,9 @@ class Kontena::Registrator::Policy
   # @param config [Config]
   # @return [ApplyContext]
   def apply_context(config = nil)
-    ApplyContext.new(config)
+    context = ApplyContext.new(config)
+    context.extend @context[:helpers] if @context[:helpers]
+    context.freeze
   end
 
   # Apply-time evaluation context for DSL procs
@@ -182,8 +189,6 @@ class Kontena::Registrator::Policy
     def initialize(config = nil)
       @config = config
       @config.freeze
-
-      self.freeze
     end
   end
 end

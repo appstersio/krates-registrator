@@ -282,6 +282,10 @@ describe Kontena::Registrator::Policy do
         subject.apply_context(policy_config)
       end
 
+      it "has the :skydns_path helper method" do
+        expect(subject.context[:helpers]).to be_method_defined(:skydns_path)
+      end
+
       it "returns etcd nodes for two containers" do
         expect(subject.apply(docker_state, apply_context)).to eq(
           '/skydns/local/kontena/test-1' => '{"host":"172.18.0.2"}',

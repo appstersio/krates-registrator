@@ -4,8 +4,10 @@ NETWORK = ENV['SKYDNS_NETWORK']
 config etcd_path: '/kontena/registrator/services/skydns/:service' do
   json_attr :domain, default: DOMAIN
   json_attr :network, default: NETWORK
+end
 
-  def skydns_path(name)
+helpers do
+  def skydns_path(domain, name)
     File.join(['/skydns', domain.split('.').reverse, name].flatten)
   end
 end
@@ -14,7 +16,7 @@ docker_container -> (container) {
   # stopped container has an empty IPAddress
   if ip = container['NetworkSettings', 'Networks', config.network, 'IPAddress']
     {
-      config.skydns_path(container.hostname) => { host: ip },
+      skydns_path(config.domain, container.hostname) => { host: ip },
     }
   end
 }
