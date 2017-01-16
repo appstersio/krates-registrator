@@ -126,6 +126,7 @@ class Kontena::Registrator::Policy
   # @return nodes [Hash{String => String}]
   def apply_nodes(nodes)
     return {} if nodes.nil?
+    raise ArgumentError, "Expected Hash, got #{nodes.class}: #{nodes.inspect}" unless nodes.is_a? Hash
 
     Hash[nodes.map{|key, value|
       case value

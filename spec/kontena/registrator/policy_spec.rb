@@ -11,6 +11,10 @@ describe Kontena::Registrator::Policy do
       it "Skips an nil value" do
         expect(subject.apply_nodes({'/kontena/test' => nil})).to eq({})
       end
+
+      it "Raises on a non-hash" do
+        expect{subject.apply_nodes('test')}.to raise_error(ArgumentError, /Expected Hash, got String: "test"/)
+      end
   end
 
   context "for a sample SkyDNS policy", :docker => true do
