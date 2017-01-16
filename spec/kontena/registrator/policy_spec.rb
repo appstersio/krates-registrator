@@ -80,6 +80,32 @@ describe Kontena::Registrator::Policy do
     end
   end
 
+  context "for a policy that yields multiple nodes", :docker => true do
+    subject do
+      described_class.new(:skydns) do
+        def docker_container(container)
+          yield ({
+            "/kontena/test1/#{container.hostname}" => { host: container['NetworkSettings', 'IPAddress'] },
+            "/kontena/test2/#{container.hostname}" => { host: container['NetworkSettings', 'IPAddress'] },
+          })
+        end
+      end
+    end
+
+    let :docker_state do
+      docker_state_fixture('test-1', 'test-2')
+    end
+
+    it "returns etcd nodes for two containers" do
+      expect(subject.context.apply(docker_state)).to eq(
+        '/kontena/test1/test-1' => '{"host":"172.18.0.2"}',
+        '/kontena/test1/test-2' => '{"host":"172.18.0.3"}',
+        '/kontena/test2/test-1' => '{"host":"172.18.0.2"}',
+        '/kontena/test2/test-2' => '{"host":"172.18.0.3"}',
+      )
+    end
+  end
+
   context "for a policy that produces overlapping nodes", :docker => true do
     subject do
       described_class.new(:skydns) do
