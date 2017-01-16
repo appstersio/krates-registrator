@@ -8,12 +8,12 @@ describe Kontena::Registrator::Service do
   end
 
   context "for a simple policy with no config" do
-    let :apply_context do
-      instance_double(Kontena::Registrator::Policy::ApplyContext)
+    let :context do
+      instance_double(Kontena::Registrator::Policy::Context)
     end
 
     subject do
-      allow(policy).to receive(:apply_context).with(nil).and_return(apply_context)
+      allow(policy).to receive(:context).with(nil).and_return(context)
 
       described_class.new(policy, nil, docker_observable: docker_observable, start: false)
     end
@@ -25,7 +25,7 @@ describe Kontena::Registrator::Service do
 
       it "does not write anything to etcd" do
         expect(docker_observable).to receive(:observe).and_yield(docker_state)
-        expect(policy).to receive(:apply).with(docker_state, apply_context).and_return({})
+        expect(context).to receive(:apply).with(docker_state).and_return({})
 
         subject.run
 
@@ -40,7 +40,7 @@ describe Kontena::Registrator::Service do
 
       before do
         expect(docker_observable).to receive(:observe).once.and_yield(docker_state)
-        expect(policy).to receive(:apply).with(docker_state, apply_context).and_return(
+        expect(context).to receive(:apply).with(docker_state).and_return(
           '/kontena/test/test-1' => '{"host":"172.18.0.2"}',
         )
       end
@@ -75,11 +75,11 @@ describe Kontena::Registrator::Service do
 
       before do
         expect(docker_observable).to receive(:observe).and_yield(docker_state1).and_yield(docker_state2)
-        expect(policy).to receive(:apply).with(docker_state1, apply_context).and_return(
+        expect(context).to receive(:apply).with(docker_state1).and_return(
           '/kontena/test/test-1' => '{"host":"172.18.0.2"}',
           '/kontena/test/test-2' => '{"host":"172.18.0.3"}',
         )
-        expect(policy).to receive(:apply).with(docker_state2, apply_context).and_return(
+        expect(context).to receive(:apply).with(docker_state2).and_return(
           '/kontena/test/test-1' => '{"host":"172.18.0.2"}',
         )
       end
@@ -105,12 +105,12 @@ describe Kontena::Registrator::Service do
       instance_double(Kontena::Registrator::Policy::Config)
     end
 
-    let :apply_context do
-      instance_double(Kontena::Registrator::Policy::ApplyContext)
+    let :context do
+      instance_double(Kontena::Registrator::Policy::Context)
     end
 
     subject do
-      allow(policy).to receive(:apply_context).with(config).and_return(apply_context)
+      allow(policy).to receive(:context).with(config).and_return(context)
 
       described_class.new(policy, 'test', config, docker_observable: docker_observable, start: false)
     end
@@ -122,7 +122,7 @@ describe Kontena::Registrator::Service do
 
       it "writes one node to etcd" do
         expect(docker_observable).to receive(:observe).once.and_yield(docker_state)
-        expect(policy).to receive(:apply).with(docker_state, apply_context).and_return(
+        expect(context).to receive(:apply).with(docker_state).and_return(
           '/kontena/test/test-1' => '{"host":"172.18.0.2"}',
         )
 
@@ -140,8 +140,8 @@ describe Kontena::Registrator::Service do
         instance_double(Kontena::Registrator::Policy::Config)
       end
 
-      let :apply_context2 do
-        instance_double(Kontena::Registrator::Policy::ApplyContext)
+      let :context2 do
+        instance_double(Kontena::Registrator::Policy::Context)
       end
 
       let :docker_state do
@@ -149,11 +149,11 @@ describe Kontena::Registrator::Service do
       end
 
       it "writes one node to etcd" do
-        expect(policy).to receive(:apply_context).with(config2).and_return(apply_context2)
-        expect(policy).to receive(:apply).with(docker_state, apply_context).and_return(
+        expect(policy).to receive(:context).with(config2).and_return(context2)
+        expect(context).to receive(:apply).with(docker_state).and_return(
           '/kontena/test/test-1' => '{"host":"172.18.0.2"}',
         )
-        expect(policy).to receive(:apply).with(docker_state, apply_context2).and_return(
+        expect(context2).to receive(:apply).with(docker_state).and_return(
           '/kontena/test2/test-1' => '{"host":"172.18.0.2"}',
         )
 
@@ -181,7 +181,7 @@ describe Kontena::Registrator::Service do
       end
 
       it "writes one node to etcd" do
-        expect(policy).to receive(:apply).with(docker_state, apply_context).and_return(
+        expect(context).to receive(:apply).with(docker_state).and_return(
           '/kontena/test/test-1' => '{"host":"172.18.0.2"}',
         )
 

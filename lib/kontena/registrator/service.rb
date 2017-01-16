@@ -19,7 +19,7 @@ class Kontena::Registrator::Service
     @etcd_writer = Kontena::Etcd::Writer.new(ttl: ETCD_TTL)
     @policy = policy
     @name = name
-    @context = policy.apply_context(config)
+    @context = policy.context(config)
 
     self.start if start
   end
@@ -54,7 +54,7 @@ class Kontena::Registrator::Service
   # @param config [Kontena::Registrator::Policy::Config] policy#config_model instance
   def reload(config)
     # replace the policy ApplyContext
-    @context = @policy.apply_context(config)
+    @context = @policy.context(config)
 
     # immediately re-apply current Docker state to update any changes to etcd
     self.update(@docker_observable.get)
@@ -78,7 +78,7 @@ class Kontena::Registrator::Service
   #
   # @param docker_state [Docker::State]
   def update(docker_state)
-    etcd_nodes = @policy.apply(docker_state, @context)
+    etcd_nodes = @context.apply(docker_state)
 
     logger.debug "update with Docker::State#containers=#{docker_state.containers.size} => etcd #nodes=#{etcd_nodes.size}"
 

@@ -1,58 +1,94 @@
 describe Kontena::Registrator::Policy do
   describe '#apply_nodes' do
-      subject do
-        policy = described_class.new(:test)
-      end
+    it "Skips an nil hash" do
+      expect(Kontena::Registrator::Policy.apply_nodes(nil)).to eq({})
+    end
 
-      it "Skips an nil hash" do
-        expect(subject.apply_nodes(nil)).to eq({})
-      end
+    it "Skips an nil value" do
+      expect(Kontena::Registrator::Policy.apply_nodes({'/kontena/test' => nil})).to eq({})
+    end
 
-      it "Skips an nil value" do
-        expect(subject.apply_nodes({'/kontena/test' => nil})).to eq({})
-      end
-
-      it "Raises on a non-hash" do
-        expect{subject.apply_nodes('test')}.to raise_error(ArgumentError, /Expected Hash, got String: "test"/)
-      end
+    it "Raises on a non-hash" do
+      expect{Kontena::Registrator::Policy.apply_nodes('test')}.to raise_error(ArgumentError, /Expected Hash, got String: "test"/)
+    end
   end
 
-  context "for a sample SkyDNS policy", :docker => true do
+  context "for a policy that registers a lambda", :docker => true do
     subject do
-      policy = described_class.new(:skydns)
-      policy.context.docker_container -> (container) {
-        {
-          "/skydns/local/skydns/#{container.hostname}" => { host: container['NetworkSettings', 'IPAddress'] },
+      described_class.new(:skydns) do
+        docker_container -> (container) {
+          {
+            "/kontena/test/#{container.hostname}" => { host: container['NetworkSettings', 'IPAddress'] },
+          }
         }
-      }
-      policy
+      end
     end
 
     let :docker_state do
       docker_state_fixture('test-1', 'test-2')
     end
 
-    let :apply_context do
-      subject.apply_context()
+    it "returns etcd nodes for two containers" do
+      expect(subject.context.apply(docker_state)).to eq(
+      '/kontena/test/test-1' => '{"host":"172.18.0.2"}',
+      '/kontena/test/test-2' => '{"host":"172.18.0.3"}',
+      )
+    end
+  end
+
+  context "for a policy that returns a hash", :docker => true do
+    subject do
+      described_class.new(:skydns) do
+        def docker_container (container)
+          return {
+            "/kontena/test/#{container.hostname}" => { host: container['NetworkSettings', 'IPAddress'] },
+          }
+        end
+      end
+    end
+
+    let :docker_state do
+      docker_state_fixture('test-1', 'test-2')
     end
 
     it "returns etcd nodes for two containers" do
-      expect(subject.apply(docker_state, apply_context)).to eq(
-        '/skydns/local/skydns/test-1' => '{"host":"172.18.0.2"}',
-        '/skydns/local/skydns/test-2' => '{"host":"172.18.0.3"}',
+      expect(subject.context.apply(docker_state)).to eq(
+      '/kontena/test/test-1' => '{"host":"172.18.0.2"}',
+      '/kontena/test/test-2' => '{"host":"172.18.0.3"}',
+      )
+    end
+  end
+
+  context "for a policy that yields", :docker => true do
+    subject do
+      described_class.new(:skydns) do
+        def docker_container(container)
+          yield "/kontena/test/#{container.hostname}" => { host: container['NetworkSettings', 'IPAddress'] }
+        end
+      end
+    end
+
+    let :docker_state do
+      docker_state_fixture('test-1', 'test-2')
+    end
+
+    it "returns etcd nodes for two containers" do
+      expect(subject.context.apply(docker_state)).to eq(
+        '/kontena/test/test-1' => '{"host":"172.18.0.2"}',
+        '/kontena/test/test-2' => '{"host":"172.18.0.3"}',
       )
     end
   end
 
   context "for a policy that produces overlapping nodes", :docker => true do
     subject do
-      policy = described_class.new(:skydns)
-      policy.context.docker_container -> (container) {
-        {
-          "/kontena/test" => { hostname: container.hostname },
+      described_class.new(:skydns) do
+        docker_container -> (container) {
+          {
+            "/kontena/test" => { hostname: container.hostname },
+          }
         }
-      }
-      policy
+      end
     end
 
     context "for two different node values" do
@@ -60,13 +96,13 @@ describe Kontena::Registrator::Policy do
         docker_state_fixture('test-1', 'test-2')
       end
 
-      let :apply_context do
-        subject.apply_context()
+      let :context do
+        subject.context
       end
 
       it "logs a warning and returns the smaller of the two nodes" do
-        expect(subject.logger).to receive(:warn)
-        expect(subject.apply(docker_state, apply_context)).to eq(
+        expect(context.logger).to receive(:warn)
+        expect(context.apply(docker_state)).to eq(
           '/kontena/test' => '{"hostname":"test-1"}',
         )
       end
@@ -77,89 +113,133 @@ describe Kontena::Registrator::Policy do
         docker_state_fixture('test-1', 'test-1')
       end
 
-      let :apply_context do
-        subject.apply_context()
+      let :context do
+        subject.context
       end
 
       it "returns that node" do
-        expect(subject.logger).to_not receive(:warn)
-        expect(subject.apply(docker_state, apply_context)).to eq(
+        expect(context.logger).to_not receive(:warn)
+        expect(context.apply(docker_state)).to eq(
           '/kontena/test' => '{"hostname":"test-1"}',
         )
       end
     end
   end
 
-  context "for a policy that attempts to mutate values", :docker => true do
+  context "for a policy that mutates the context class", :docker => true do
     subject do
-      policy = described_class.new(:skydns)
-      policy.context.config do
-        def test_class_mutate
+      described_class.new(:test) do
+        def docker_container(container)
           self.class.include Comparable
         end
-        def test_instance_mutate
-          @foo = 'bar'
-        end
       end
-      policy
-    end
-
-    let :config_class do
-      subject.context[:config]
-    end
-
-    let :policy_config do
-      subject.config_model.new()
-    end
-
-    let :apply_context do
-      subject.apply_context(policy_config)
     end
 
     let :docker_state do
       docker_state_fixture('test-1')
     end
 
-    it "raises on config class mutation" do
-      subject.context.docker_container -> (container) {
-        config.test_class_mutate
-      }
+    it "raises an error" do
+      expect{subject.context.apply(docker_state)}.to raise_error(RuntimeError, /can't modify frozen/)
+    end
+  end
 
-      expect{subject.apply(docker_state, apply_context)}.to raise_error(RuntimeError, /can't modify frozen/)
+  context "for a policy that mutates the context instance", :docker => true do
+    subject do
+      described_class.new(:test) do
+        def docker_container(container)
+          @config = nil
+        end
+      end
     end
 
-    it "raises on config instance mutation" do
-      subject.context.docker_container -> (container) {
-        config.test_instance_mutate
-      }
-
-      expect{subject.apply(docker_state, apply_context)}.to raise_error(RuntimeError, /can't modify frozen/)
+    let :docker_state do
+      docker_state_fixture('test-1')
     end
 
-    it "raises on apply context mutation" do
-      subject.context.docker_container -> (container) {
-        @config = nil
-      }
+    it "raises an error" do
+      expect{subject.context.apply(docker_state)}.to raise_error(RuntimeError, /can't modify frozen/)
+    end
+  end
 
-      expect{subject.apply(docker_state, apply_context)}.to raise_error(RuntimeError, /can't modify frozen/)
+  context "for a policy that mutates the config instance", :docker => true do
+    subject do
+      described_class.new(:test) do
+        config do
+          def test
+            @test = true
+          end
+        end
+        def docker_container(container)
+          { '/kontena/test' => config.test }
+        end
+      end
+    end
+
+    let :config do
+      subject.config_model.new()
+    end
+
+    let :context do
+      subject.context(config)
+    end
+
+    let :docker_state do
+      docker_state_fixture('test-1')
+    end
+
+
+    it "raises an error" do
+      expect{context.apply(docker_state)}.to raise_error(RuntimeError, /can't modify frozen/)
+    end
+  end
+
+  context "for a policy that mutates the config instance", :docker => true do
+    subject do
+      described_class.new(:test) do
+        config do
+          json_attr :test, default: 0
+        end
+        def docker_container(container)
+          config.test += 1
+
+          { '/kontena/test' => config.test }
+        end
+      end
+    end
+
+    let :config do
+      subject.config_model.new()
+    end
+
+    let :context do
+      subject.context(config)
+    end
+
+    let :docker_state do
+      docker_state_fixture('test-1')
+    end
+
+    it "raises an error" do
+      expect{context.apply(docker_state)}.to raise_error(RuntimeError, /can't modify frozen/)
     end
   end
 
   context "for a configurable SkyDNS policy", :docker => true do
     subject do
-      policy = described_class.new(:skydns)
-      policy.context.config etcd_path: '/kontena/registrator/services/skydns/:service' do
-        json_attr :domain, default: 'skydns.local'
-        json_attr :network, default: 'bridge'
-      end
-      policy.context.docker_container -> (container) {
-        if ip = container['NetworkSettings', 'Networks', config.network, 'IPAddress']
-          {
-            "/skydns/#{config.domain.split('.').reverse.join('/')}/#{container.hostname}" => { host: ip },
-          }
+      described_class.new(:skydns) do
+        config etcd_path: '/kontena/registrator/services/skydns/:service' do
+          json_attr :domain, default: 'skydns.local'
+          json_attr :network, default: 'bridge'
         end
-      }
-      policy
+        docker_container -> (container) {
+          if ip = container['NetworkSettings', 'Networks', config.network, 'IPAddress']
+            {
+              "/skydns/#{config.domain.split('.').reverse.join('/')}/#{container.hostname}" => { host: ip },
+            }
+          end
+        }
+      end
     end
 
     let :docker_state do
@@ -167,20 +247,16 @@ describe Kontena::Registrator::Policy do
     end
 
     context "for a local config" do
-      let :policy_config do
+      let :config do
         subject.config_model.new(domain: 'kontena.local')
       end
 
-      let :apply_context do
-        subject.apply_context(policy_config)
-      end
-
       it "returns etcd nodes for two containers" do
-        expect(policy_config.class.included_modules).to include(Kontena::JSON::Model)
-        expect(policy_config.domain).to eq 'kontena.local'
-        expect(policy_config.network).to eq 'bridge'
+        expect(config.class.included_modules).to include(Kontena::JSON::Model)
+        expect(config.domain).to eq 'kontena.local'
+        expect(config.network).to eq 'bridge'
 
-        expect(subject.apply(docker_state, apply_context)).to eq(
+        expect(subject.context(config).apply(docker_state)).to eq(
           '/skydns/local/kontena/test-1' => '{"host":"172.18.0.2"}',
           '/skydns/local/kontena/test-2' => '{"host":"172.18.0.3"}',
         )
@@ -188,35 +264,31 @@ describe Kontena::Registrator::Policy do
     end
 
     context "for an etcd config", :etcd => true do
-      let :config_model do
-        subject.config_model_etcd
-      end
-
       before do
         etcd_server.load!(
           '/kontena/registrator/services/skydns/test' => { 'domain' => 'kontena.local' },
         )
       end
 
-      let :policy_config do
-          config_model.get('test')
+      let :config do
+          subject.config_model_etcd.get('test')
       end
 
-      let :apply_context do
-        apply_context = subject.apply_context(policy_config)
+      let :context do
+        subject.context(config)
       end
 
       it "loads a config from etcd" do
-        expect{policy_config}.to_not raise_error
-        expect(policy_config).to have_attributes(service: 'test', domain: 'kontena.local', network: 'bridge')
+        expect{config}.to_not raise_error
+        expect(config).to have_attributes(service: 'test', domain: 'kontena.local', network: 'bridge')
       end
 
       it "returns etcd nodes for two containers" do
-        expect(config_model.included_modules).to include(Kontena::Etcd::Model, Kontena::JSON::Model)
-        expect(policy_config.domain).to eq 'kontena.local'
-        expect(policy_config.network).to eq 'bridge'
+        expect(config.class.included_modules).to include(Kontena::Etcd::Model, Kontena::JSON::Model)
+        expect(config.domain).to eq 'kontena.local'
+        expect(config.network).to eq 'bridge'
 
-        expect(subject.apply(docker_state, apply_context)).to eq(
+        expect(context.apply(docker_state)).to eq(
           '/skydns/local/kontena/test-1' => '{"host":"172.18.0.2"}',
           '/skydns/local/kontena/test-2' => '{"host":"172.18.0.3"}',
         )
@@ -230,8 +302,8 @@ describe Kontena::Registrator::Policy do
         docker_state_fixture('test-1', 'test-2')
       end
 
-      let :apply_context do
-        subject.apply_context()
+      let :context do
+        subject.context()
       end
 
       subject do
@@ -244,7 +316,7 @@ describe Kontena::Registrator::Policy do
       end
 
       it "returns etcd nodes for two containers" do
-        expect(subject.apply(docker_state, apply_context)).to eq(
+        expect(context.apply(docker_state)).to eq(
           '/kontena/test/test-1' => "172.18.0.2",
           '/kontena/test/test-2' => "172.18.0.3",
         )
@@ -256,8 +328,8 @@ describe Kontena::Registrator::Policy do
         docker_state_fixture('test-1', 'test-2')
       end
 
-      let :apply_context do
-        subject.apply_context()
+      let :context do
+        subject.context()
       end
 
       subject do
@@ -265,7 +337,7 @@ describe Kontena::Registrator::Policy do
       end
 
       it "fails to apply" do
-        expect{subject.apply(docker_state, apply_context)}.to raise_error(RuntimeError, /can't modify frozen #<Class:#<Kontena::Registrator::Policy::LoadContext:/)
+        expect{context.apply(docker_state)}.to raise_error(RuntimeError, /can't modify frozen class/)
       end
     end
 
@@ -278,20 +350,20 @@ describe Kontena::Registrator::Policy do
         described_class.load(fixture_path(:policy, 'skydns.rb'))
       end
 
-      let :policy_config do
+      let :config do
         subject.config_model.new(domain: 'kontena.local', network: 'bridge')
       end
 
-      let :apply_context do
-        subject.apply_context(policy_config)
+      let :context do
+        subject.context(config)
       end
 
       it "has the :skydns_path helper method" do
-        expect(subject.context[:helpers]).to be_method_defined(:skydns_path)
+        expect(context.class).to be_method_defined(:skydns_path)
       end
 
       it "returns etcd nodes for two containers" do
-        expect(subject.apply(docker_state, apply_context)).to eq(
+        expect(context.apply(docker_state)).to eq(
           '/skydns/local/kontena/test-1' => '{"host":"172.18.0.2"}',
           '/skydns/local/kontena/test-2' => '{"host":"172.18.0.3"}',
         )

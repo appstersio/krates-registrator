@@ -1,6 +1,9 @@
 require 'kontena/logging'
 
-# A schema for selecting Docker containers and registering etcd configuration nodes
+# A DSL for generating etcd configuration nodes from Docker containers, with optional configuration
+#
+# Loading a policy creates a dynamic Context sub-class.
+# An instance of the Context can then be used to apply a Docker::State
 class Kontena::Registrator::Policy
   include Kontena::Logging
 
@@ -19,10 +22,10 @@ class Kontena::Registrator::Policy
   # @return [Kontena::Registrator::Policy]
   def self.load(path)
     name = File.basename(path, '.*')
-    policy = new(name)
-
-    File.open(path, "r") do |file|
-      policy.load(file)
+    policy = new(name) do |context_class|
+      File.open(path, "r") do |file|
+        context_class.load(file)
+      end
     end
 
     policy.logger.info "Load policy=#{name} from path=#{path}"
@@ -30,46 +33,44 @@ class Kontena::Registrator::Policy
     policy
   end
 
-  # TODO: make etcd optional?
+  # Optional configuration model
+  # Also supports etcd
   class Config
     include Kontena::JSON::Model
   end
 
-  attr_accessor :name, :context
+  # Loading creates a new Context class, and an instance can apply
+  class Context
+    include Kontena::Logging
 
-  def initialize(name)
-    @name = name
-    @context = LoadContext.new
-  end
+    def self.[](sym)
+      self.instance_variable_get("@#{sym}")
+    end
 
-  def to_s
-    "#{@name}"
-  end
-
-  # Evaluate .rb DSL
-  #
-  # @param file [File]
-  def load(file)
-     @context.instance_eval(file.read, file.path)
-     @context.freeze
-  end
-
-  # Load-time evaluation context for DSL
-  class LoadContext
-    def [](sym)
-      instance_variable_get("@#{sym}")
+    # Evaluate .rb DSL
+    #
+    # @param file [File]
+    def self.load(file)
+       self.class_eval(file.read, file.path)
     end
 
     # Declare a Kontena::JSON::Model used to configure this policy's services
     #
     # @param etcd_path [String] Optional Kontena::Etcd::Model#etcd_path schema for loading config from etcd
     # @yield [class] block is evaluated within the new config model class
-    def config(etcd_path: nil, &block)
+    def self.config(etcd_path: nil, &block)
       @config_etcd_path = etcd_path
 
       # policy-specific config class
       @config = Class.new(Config, &block)
       @config.freeze
+    end
+
+    attr_accessor :config
+
+    # @param config [Config] optional instance of this class's config model
+    def initialize(config = nil)
+      @config = config.freeze
     end
 
     # Register a Docker::Container handler
@@ -79,15 +80,68 @@ class Kontena::Registrator::Policy
     # * String values are kept as raw strings
     # * Object values are encoded to JSON
     #
-    # @param proc [Proc] Kontena::Registrator::Docker::Container -> Hash{String => nil, String, JSON>
-    def docker_container(proc)
-      @docker_container = proc
+    # @param container [Kontena::Registrator::Docker::Container]
+    # @return [Hash{String => nil, String, JSON]
+    def docker_container(container)
+      raise ArgumentError, "Policy does not have any docker_container() method"
     end
 
-    # Define helper methods
-    def helpers(&block)
-      @helpers = Module.new(&block)
+    # Legacy compat: register a lambda
+    def self.docker_container(proc)
+      self.send :define_method, :docker_container, proc
     end
+
+    # Compile a Docker::State into a set of etcd nodes
+    #
+    # @param state [Kontena::Registrator::Docker::State]
+    # @param context [ApplyContext]
+    # @return [Hash<String, String>] nodes for Kontena::Etcd::Writer
+    def apply(state)
+      state_nodes = {}
+
+      state.containers.each do |container|
+        # yield or return
+        container_nodes = [ ]
+        container_nodes << docker_container(container) do |nodes|
+          container_nodes << nodes
+          nil
+        end
+
+        container_nodes.each do |nodes|
+          nodes = Kontena::Registrator::Policy.apply_nodes(nodes)
+
+          logger.debug "apply container=#{container}: #{container_nodes}"
+
+          state_nodes.merge!(nodes) do |key, old, new|
+            if old == new
+              logger.debug "Merge etcd=#{key} node for container=#{container}: #{old.inspect}"
+
+              old
+            else
+              logger.warn "Overlapping etcd=#{key} node for container=#{container}: #{old.inspect} -> #{new.inspect}"
+
+              # Choose one node deterministically until the overlapping container goes away...
+              [old, new].min
+            end
+          end
+        end
+      end
+
+      state_nodes
+    end
+
+  end
+
+  attr_accessor :name, :context
+
+  def initialize(name, &block)
+    @name = name
+    @context = Class.new(Context, &block)
+    @context.freeze
+  end
+
+  def to_s
+    "#{@name}"
   end
 
   # Is the Policy configurable?
@@ -120,11 +174,21 @@ class Kontena::Registrator::Policy
     end
   end
 
+  # Create instance
+  #
+  # @param config [Config]
+  # @return [Context] instance
+  def context(config = nil)
+    context = @context.new(config)
+    context.logger # memoize before freezing
+    context.freeze
+  end
+
   # Normalize policy nodes to etcd nodes
   #
   # @param nodes [Hash{String => nil, String, JSON}]
   # @return nodes [Hash{String => String}]
-  def apply_nodes(nodes)
+  def self.apply_nodes(nodes)
     return {} if nodes.nil?
     raise ArgumentError, "Expected Hash, got #{nodes.class}: #{nodes.inspect}" unless nodes.is_a? Hash
 
@@ -140,56 +204,5 @@ class Kontena::Registrator::Policy
         raise TypeError, "Invalid value for etcd #{key}: #{value.inspect}"
       end
     }.compact]
-  end
-
-  # Compile a Docker::State into a set of etcd nodes
-  #
-  # @param state [Kontena::Registrator::Docker::State]
-  # @param context [ApplyContext]
-  # @return [Hash<String, String>] nodes for Kontena::Etcd::Writer
-  def apply(state, context)
-    nodes = {}
-
-    state.containers.each do |container|
-      container_nodes = apply_nodes(context.instance_exec(container, &@context[:docker_container]))
-
-      logger.debug "apply container=#{container}: #{container_nodes}"
-
-      nodes.merge!(container_nodes) do |key, old, new|
-        if old == new
-          logger.debug "Merge etcd=#{key} node for container=#{container}: #{old.inspect}"
-
-          old
-        else
-          logger.warn "Overlapping etcd=#{key} node for container=#{container}: #{old.inspect} -> #{new.inspect}"
-
-          # Choose one node deterministically until the overlapping container goes away...
-          [old, new].min
-        end
-      end
-    end
-
-    nodes
-  end
-
-  # @param config [Config]
-  # @return [ApplyContext]
-  def apply_context(config = nil)
-    context = ApplyContext.new(config)
-    context.extend @context[:helpers] if @context[:helpers]
-    context.freeze
-  end
-
-  # Apply-time evaluation context for DSL procs
-  # One policy may have multiple Services, each with a different ApplyContext...
-  #
-  # @attr config [Config, nil] instance of Policy#config_model class
-  class ApplyContext
-    attr_reader :config
-
-    def initialize(config = nil)
-      @config = config
-      @config.freeze
-    end
   end
 end
