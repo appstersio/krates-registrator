@@ -40,7 +40,7 @@ GEM
     excon (0.54.0)
     hashdiff (0.3.1)
     hitimes (1.2.4)
-    json (2.0.2)
+    json (2.3.1)
     public_suffix (2.0.4)
     rack (1.6.5)
     rack-protection (1.5.3)
