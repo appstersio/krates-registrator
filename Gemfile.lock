@@ -12,8 +12,8 @@ PATH
 GEM
   remote: https://rubygems.org/
   specs:
-    addressable (2.5.0)
-      public_suffix (~> 2.0, >= 2.0.2)
+    addressable (2.8.0)
+      public_suffix (>= 2.0.2, < 5.0)
     celluloid (0.17.3)
       celluloid-essentials
       celluloid-extras
@@ -41,7 +41,7 @@ GEM
     hashdiff (0.3.1)
     hitimes (1.2.4)
     json (2.0.2)
-    public_suffix (2.0.4)
+    public_suffix (4.0.6)
     rack (1.6.5)
     rack-protection (1.5.3)
       rack
